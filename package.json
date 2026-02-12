@@ -1,12 +1,20 @@
 {
-  "name": "nextn",
-  "version": "0.1.0",
+  "name": "localpass",
+  "version": "1.0.0",
+  "description": "LocalPass - Gestor de contraseñas seguro 100% offline",
+  "author": "LocalPass",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
-    "dev": "next dev --turbopack -p 9002",
+    "dev": "concurrently -k \"npm run dev:next\" \"npm run dev:electron\"",
+    "dev:next": "next dev --turbopack -p 9002",
+    "dev:electron": "wait-on http://localhost:9002 && electron .",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "NODE_ENV=production next build",
+    "build": "next build && npm run clean:dist && electron-builder",
+    "build:next": "next build",
+    "build:electron": "electron-builder",
+    "clean:dist": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
@@ -59,9 +67,43 @@
     "@types/node": "^20",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
+    "concurrently": "^9.0.1",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
     "genkit-cli": "^1.20.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.localpass.app",
+    "productName": "LocalPass",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**",
+      "electron/**",
+      "package.json"
+    ],
+    "asarUnpack": ["out/**"],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "LocalPass-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "LocalPass-${version}-portable.exe"
+    }
   }
 }

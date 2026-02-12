@@ -444,19 +444,31 @@ export function Dashboard() {
                           <Upload className="w-5 h-5" /> {t('settings.import_title')}
                         </h3>
                         <p className="text-sm text-muted-foreground">{t('settings.import_desc')}</p>
-                        <Input type="file" className="cursor-pointer" onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const text = await file.text();
-                          const pass = prompt(t('app.master_pass_prompt'));
-                          if (pass) {
+                        <Input
+                          type="file"
+                          accept=".json,application/json"
+                          className="cursor-pointer"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            let text: string;
+                            try {
+                              text = await file.text();
+                            } catch {
+                              toast({ variant: "destructive", title: "Error", description: t('app.import_error') });
+                              return;
+                            }
+                            const pass = prompt(t('app.master_pass_prompt'));
+                            if (!pass) return;
                             try {
                               await importVault(text, pass);
+                              setView('accounts');
                             } catch (err: any) {
-                              toast({ variant: "destructive", title: "Error", description: err.message });
+                              toast({ variant: "destructive", title: "Error", description: err?.message ?? t('app.import_error') });
                             }
-                          }
-                        }} />
+                            e.target.value = '';
+                          }}
+                        />
                       </CardContent>
                     </Card>
 

@@ -194,66 +194,103 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const importVault = async (fileContent: string, password: string) => {
+    const rawContent = fileContent.trim().replace(/^\uFEFF/, '');
+    if (!rawContent) throw new Error(t('app.import_error'));
+
+    let parsed: unknown;
     try {
-      const pkg: ExportPackage = JSON.parse(fileContent);
-      const encryptedData = pkg.vaultData;
-      
+      parsed = JSON.parse(rawContent);
+    } catch {
+      throw new Error(t('app.import_error'));
+    }
+
+    const encryptedData: VaultEncryptedFile = (parsed as any)?.vaultData ?? (parsed as any);
+    if (!encryptedData?.salt || !encryptedData?.iv || !encryptedData?.data) {
+      throw new Error(t('app.import_error'));
+    }
+
+    let decryptedStr: string;
+    try {
       const salt = base64ToUint8Array(encryptedData.salt);
       const iv = base64ToUint8Array(encryptedData.iv);
       const ciphertext = base64ToArrayBuffer(encryptedData.data);
-      
       const key = await deriveKey(password, salt);
-      const decryptedStr = await decryptData(ciphertext, key, iv);
-      const importedVault: VaultDecrypted = JSON.parse(decryptedStr);
+      decryptedStr = await decryptData(ciphertext, key, iv);
+    } catch (e) {
+      throw new Error(t('app.import_wrong_password'));
+    }
 
-      if (!vault) {
-        await saveVault(importedVault, password);
-        setVault(importedVault);
-        setMasterPassword(password);
-        setIsLocked(false);
-        return;
-      }
-
-      const currentVault = { ...vault };
-      const mergedAccounts = [...currentVault.accounts];
-      const newConflicts: ConflictEntry[] = [...currentVault.conflicts];
-
-      for (const importedAcc of importedVault.accounts) {
-        const localByMatch = mergedAccounts.find(a => 
-          a.sitio.toLowerCase() === importedAcc.sitio.toLowerCase() && 
-          a.usuario.toLowerCase() === importedAcc.usuario.toLowerCase()
-        );
-
-        if (!localByMatch) {
-          mergedAccounts.push(importedAcc);
-        } else {
-          if (localByMatch.password !== importedAcc.password) {
-            newConflicts.push({
-              conflictId: crypto.randomUUID(),
-              sitio: importedAcc.sitio,
-              usuario: importedAcc.usuario,
-              versionLocal: { ...localByMatch },
-              versionImportada: { ...importedAcc },
-              detectedAt: new Date().toISOString()
-            });
-          } else {
-            if (new Date(importedAcc.updatedAt) > new Date(localByMatch.updatedAt)) {
-              const idx = mergedAccounts.indexOf(localByMatch);
-              mergedAccounts[idx] = { ...importedAcc };
-            }
-          }
-        }
-      }
-
-      currentVault.accounts = mergedAccounts;
-      currentVault.conflicts = newConflicts;
-      currentVault.updatedAt = new Date().toISOString();
-      
-      await saveVault(currentVault, masterPassword!);
-      toast({ title: t('conflicts.synced_title') });
-    } catch (e: any) {
+    let importedVault: VaultDecrypted;
+    try {
+      importedVault = JSON.parse(decryptedStr) as VaultDecrypted;
+    } catch {
       throw new Error(t('app.import_error'));
     }
+
+    const importedAccounts = Array.isArray(importedVault.accounts) ? importedVault.accounts : [];
+    const importedConflicts = Array.isArray(importedVault.conflicts) ? importedVault.conflicts : [];
+
+    if (!vault) {
+      const emptyVault: VaultDecrypted = {
+        vaultVersion: '1.0',
+        deviceId: importedVault.deviceId ?? crypto.randomUUID(),
+        createdAt: importedVault.createdAt ?? new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        accounts: importedAccounts,
+        conflicts: importedConflicts,
+      };
+      await saveVault(emptyVault, password);
+      setMasterPassword(password);
+      setIsLocked(false);
+      toast({
+        title: t('conflicts.synced_title'),
+        description: `${importedAccounts.length} ${t('form.accounts_imported')}`,
+      });
+      return;
+    }
+
+    const mergedAccounts: AccountEntry[] = [...vault.accounts];
+    const newConflicts: ConflictEntry[] = [...vault.conflicts];
+
+    for (const importedAcc of importedAccounts) {
+      const localByMatch = mergedAccounts.find(
+        (a) =>
+          a.sitio.toLowerCase() === importedAcc.sitio.toLowerCase() &&
+          a.usuario.toLowerCase() === importedAcc.usuario.toLowerCase()
+      );
+
+      if (!localByMatch) {
+        mergedAccounts.push(importedAcc);
+      } else {
+        if (localByMatch.password !== importedAcc.password) {
+          newConflicts.push({
+            conflictId: crypto.randomUUID(),
+            sitio: importedAcc.sitio,
+            usuario: importedAcc.usuario,
+            versionLocal: { ...localByMatch },
+            versionImportada: { ...importedAcc },
+            detectedAt: new Date().toISOString(),
+          });
+        } else if (new Date(importedAcc.updatedAt) > new Date(localByMatch.updatedAt)) {
+          const idx = mergedAccounts.indexOf(localByMatch);
+          mergedAccounts[idx] = { ...importedAcc };
+        }
+      }
+    }
+
+    const mergedVault: VaultDecrypted = {
+      ...vault,
+      accounts: mergedAccounts,
+      conflicts: newConflicts,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await saveVault(mergedVault, masterPassword!);
+    setVault(mergedVault);
+    toast({
+      title: t('conflicts.synced_title'),
+      description: `${mergedAccounts.length} ${t('form.accounts_imported')}`,
+    });
   };
 
   return (
