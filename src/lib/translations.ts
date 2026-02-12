@@ -25,8 +25,12 @@ export const translations = {
       reset_vault: "Reset Vault",
       reset_confirm_title: "Are you absolutely sure?",
       reset_confirm_desc: "This will permanently delete your current local vault. You will not be able to recover your data unless you have an encrypted backup file.",
+      reset_confirm_recover_hint: "Forgot your password? Use \"Recover from backup\" below first to restore your data, then you can reset if needed.",
       reset_button: "Yes, Reset and Start Fresh",
-      cancel: "Cancel"
+      cancel: "Cancel",
+      recover_from_backup: "Recover from backup",
+      recover_from_backup_desc: "If you forgot your master password, import a backup file (.json) and enter the password you used when you created that backup. Your data will be restored.",
+      recover_button: "Recover"
     },
     sidebar: {
       accounts: "Accounts",
@@ -101,6 +105,10 @@ export const translations = {
       export_button: "Download Encrypted Package",
       import_title: "Import and Merge",
       import_desc: "Upload a vault file to combine with current one. Conflicts will be detected automatically.",
+      import_button: "Choose file and import",
+      import_file_label: "Backup file (.json)",
+      import_select_file: "Select backup file",
+      import_do: "Import",
       tech_info: "Technical Information",
       device_id: "Current Device ID",
       algorithm: "Encryption Algorithm",
@@ -155,8 +163,12 @@ export const translations = {
       reset_vault: "Reiniciar Bóveda",
       reset_confirm_title: "¿Estás absolutamente seguro?",
       reset_confirm_desc: "Esto eliminará permanentemente tu bóveda local actual. No podrás recuperar tus datos a menos que tengas un archivo de respaldo cifrado.",
+      reset_confirm_recover_hint: "¿Olvidaste tu contraseña? Usa \"Recuperar desde respaldo\" abajo para restaurar tus datos antes de reiniciar.",
       reset_button: "Sí, Reiniciar y Comenzar de Nuevo",
-      cancel: "Cancelar"
+      cancel: "Cancelar",
+      recover_from_backup: "Recuperar desde respaldo",
+      recover_from_backup_desc: "Si olvidaste tu contraseña maestra, importa un archivo de respaldo (.json) e introduce la contraseña que usaste al crear ese respaldo. Tus datos se restaurarán.",
+      recover_button: "Recuperar"
     },
     sidebar: {
       accounts: "Cuentas",
@@ -231,6 +243,10 @@ export const translations = {
       export_button: "Descargar Paquete Cifrado",
       import_title: "Importar y Fusionar",
       import_desc: "Sube un archivo de bóveda para combinarlo. Los conflictos se detectarán automáticamente.",
+      import_button: "Elegir archivo e importar",
+      import_file_label: "Archivo de respaldo (.json)",
+      import_select_file: "Seleccionar archivo de respaldo",
+      import_do: "Importar",
       tech_info: "Información Técnica",
       device_id: "ID de Dispositivo",
       algorithm: "Algoritmo de Cifrado",

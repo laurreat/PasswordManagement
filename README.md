@@ -38,12 +38,14 @@ LocalPass is a high-security password manager designed to operate 100% offline. 
 ### Escritorio (Electron)
 - **Desarrollo:** `npm run dev` abre la app en una ventana de Electron (Next.js en el puerto 9002).
 - **Portable e instalador (100 % local):** El .exe portable y el instalador funcionan **solos**: no necesitan consola, ni `npm run dev`, ni internet. Solo ejecutas el .exe y la app abre.
+- **Mismas funciones en todos:** Importar/exportar, recuperar desde respaldo (si olvidaste la contraseña), fusión de conflictos, generador, auditoría, tema e idioma funcionan **igual** en web, portable e instalador. El mismo código se ejecuta en los tres.
 - **Build (Windows):**
   1. **Cierra** cualquier ventana de LocalPass o Electron que esté abierta (evita el error "Access is denied").
   2. `npm run build`
   3. En `dist/` tendrás:
      - **LocalPass-Setup-1.0.0.exe** — instalador (NSIS).
      - **LocalPass-1.0.0-portable.exe** — portable: un solo .exe, sin instalación, sin dependencias.
+  4. Tras añadir nuevas funciones, vuelve a ejecutar `npm run build` para que el portable y el instalador incluyan los últimos cambios.
 
 ---
 **Security Note:** LocalPass does not have a "Recover Password" mechanism. If you forget your Master Password, your data is mathematically impossible to recover. Frequently back up your encrypted .json vault files.

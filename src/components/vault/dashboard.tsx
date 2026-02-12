@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useVault } from "@/hooks/use-vault";
 import { useUISettings } from "@/hooks/use-ui-settings";
 import { AccountEntry, PasswordHistory } from "@/lib/types";
@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger 
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { passwordSecurityAudit, PasswordSecurityAuditOutput } from "@/ai/flows/password-security-audit";
@@ -44,6 +44,11 @@ export function Dashboard() {
   
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<AccountEntry>>({});
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importPassword, setImportPassword] = useState("");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Reset selection when view changes
@@ -444,31 +449,89 @@ export function Dashboard() {
                           <Upload className="w-5 h-5" /> {t('settings.import_title')}
                         </h3>
                         <p className="text-sm text-muted-foreground">{t('settings.import_desc')}</p>
-                        <Input
-                          type="file"
-                          accept=".json,application/json"
-                          className="cursor-pointer"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            let text: string;
-                            try {
-                              text = await file.text();
-                            } catch {
-                              toast({ variant: "destructive", title: "Error", description: t('app.import_error') });
-                              return;
-                            }
-                            const pass = prompt(t('app.master_pass_prompt'));
-                            if (!pass) return;
-                            try {
-                              await importVault(text, pass);
-                              setView('accounts');
-                            } catch (err: any) {
-                              toast({ variant: "destructive", title: "Error", description: err?.message ?? t('app.import_error') });
-                            }
-                            e.target.value = '';
-                          }}
-                        />
+                        <Dialog open={importDialogOpen} onOpenChange={(open) => {
+                          setImportDialogOpen(open);
+                          if (!open) {
+                            setImportPassword("");
+                            setImportFile(null);
+                            if (importFileInputRef.current) importFileInputRef.current.value = "";
+                          }
+                        }}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" className="w-full gap-2">
+                              <Upload className="w-4 h-4" /> {t('settings.import_button')}
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>{t('settings.import_title')}</DialogTitle>
+                              <DialogDescription>{t('settings.import_desc')}</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">{t('app.master_password')}</label>
+                                <Input
+                                  type="password"
+                                  placeholder={t('app.master_pass_prompt')}
+                                  value={importPassword}
+                                  onChange={(e) => setImportPassword(e.target.value)}
+                                  autoComplete="off"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label htmlFor="import-file-input" className="text-sm font-medium">{t('settings.import_file_label')}</label>
+                                <input
+                                  id="import-file-input"
+                                  ref={importFileInputRef}
+                                  type="file"
+                                  accept=".json,application/json"
+                                  className="hidden"
+                                  title={t('settings.import_file_label')}
+                                  onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                                />
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => importFileInputRef.current?.click()}
+                                  >
+                                    {importFile ? importFile.name : t('settings.import_select_file')}
+                                  </Button>
+                                  {importFile && (
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => { setImportFile(null); importFileInputRef.current && (importFileInputRef.current.value = ""); }}>
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button
+                                disabled={!importPassword.trim() || !importFile || importLoading}
+                                onClick={async () => {
+                                  if (!importFile) return;
+                                  setImportLoading(true);
+                                  try {
+                                    const text = await importFile.text();
+                                    await importVault(text, importPassword.trim());
+                                    setImportDialogOpen(false);
+                                    setView('accounts');
+                                    setImportPassword("");
+                                    setImportFile(null);
+                                    if (importFileInputRef.current) importFileInputRef.current.value = "";
+                                  } catch (err: any) {
+                                    toast({ variant: "destructive", title: "Error", description: err?.message ?? t('app.import_error') });
+                                  } finally {
+                                    setImportLoading(false);
+                                  }
+                                }}
+                              >
+                                {importLoading ? t('app.encrypting') : t('settings.import_do')}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </CardContent>
                     </Card>
 

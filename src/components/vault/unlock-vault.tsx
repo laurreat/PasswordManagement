@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useVault } from "@/hooks/use-vault";
 import { useUISettings } from "@/hooks/use-ui-settings";
 import { Button } from "@/components/ui/button";
@@ -17,15 +17,29 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
-import { KeyRound, ShieldAlert, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { KeyRound, ShieldAlert, Trash2, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export function UnlockVault() {
-  const { unlock, resetVault } = useVault();
+  const { unlock, resetVault, importVault } = useVault();
   const { t } = useUISettings();
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [recoverOpen, setRecoverOpen] = useState(false);
+  const [recoverPassword, setRecoverPassword] = useState("");
+  const [recoverFile, setRecoverFile] = useState<File | null>(null);
+  const [recoverLoading, setRecoverLoading] = useState(false);
+  const recoverFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +92,101 @@ export function UnlockVault() {
           </form>
 
           <div className="mt-8 pt-4 border-t flex flex-col items-center gap-4">
+            <Dialog open={recoverOpen} onOpenChange={(open) => {
+              setRecoverOpen(open);
+              if (!open) {
+                setRecoverPassword("");
+                setRecoverFile(null);
+                if (recoverFileInputRef.current) recoverFileInputRef.current.value = "";
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-muted-foreground gap-2">
+                  <Upload className="w-3 h-3" /> {t('app.recover_from_backup')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{t('app.recover_from_backup')}</DialogTitle>
+                  <DialogDescription>{t('app.recover_from_backup_desc')}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t('app.master_password')}</label>
+                    <Input
+                      type="password"
+                      placeholder={t('app.master_pass_prompt')}
+                      value={recoverPassword}
+                      onChange={(e) => setRecoverPassword(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="recover-file-input" className="text-sm font-medium">{t('settings.import_file_label')}</label>
+                    <input
+                      id="recover-file-input"
+                      ref={recoverFileInputRef}
+                      type="file"
+                      accept=".json,application/json"
+                      className="hidden"
+                      title={t('settings.import_file_label')}
+                      onChange={(e) => setRecoverFile(e.target.files?.[0] ?? null)}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => recoverFileInputRef.current?.click()}
+                      >
+                        {recoverFile ? recoverFile.name : t('settings.import_select_file')}
+                      </Button>
+                      {recoverFile && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setRecoverFile(null);
+                            if (recoverFileInputRef.current) recoverFileInputRef.current.value = "";
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    disabled={!recoverPassword.trim() || !recoverFile || recoverLoading}
+                    onClick={async () => {
+                      if (!recoverFile) return;
+                      setRecoverLoading(true);
+                      try {
+                        const text = await recoverFile.text();
+                        await importVault(text, recoverPassword.trim());
+                        setRecoverOpen(false);
+                        setRecoverPassword("");
+                        setRecoverFile(null);
+                        if (recoverFileInputRef.current) recoverFileInputRef.current.value = "";
+                      } catch (err: unknown) {
+                        toast({
+                          variant: "destructive",
+                          title: "Error",
+                          description: err instanceof Error ? err.message : t('app.import_error'),
+                        });
+                      } finally {
+                        setRecoverLoading(false);
+                      }
+                    }}
+                  >
+                    {recoverLoading ? t('app.encrypting') : t('app.recover_button')}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive gap-2">
@@ -88,7 +197,7 @@ export function UnlockVault() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>{t('app.reset_confirm_title')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    {t('app.reset_confirm_desc')}
+                    {t('app.reset_confirm_desc')} {t('app.reset_confirm_recover_hint')}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

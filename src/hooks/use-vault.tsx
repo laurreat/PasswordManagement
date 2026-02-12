@@ -252,6 +252,16 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const mergedAccounts: AccountEntry[] = [...vault.accounts];
     const newConflicts: ConflictEntry[] = [...vault.conflicts];
 
+    // Incluir conflictos del backup que no existan ya (mismo sitio+usuario)
+    const conflictKey = (c: ConflictEntry) => `${c.sitio.toLowerCase()}|${c.usuario.toLowerCase()}`;
+    const existingConflictKeys = new Set(newConflicts.map(conflictKey));
+    for (const c of importedConflicts) {
+      if (!existingConflictKeys.has(conflictKey(c))) {
+        newConflicts.push(c);
+        existingConflictKeys.add(conflictKey(c));
+      }
+    }
+
     for (const importedAcc of importedAccounts) {
       const localByMatch = mergedAccounts.find(
         (a) =>
@@ -263,14 +273,18 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         mergedAccounts.push(importedAcc);
       } else {
         if (localByMatch.password !== importedAcc.password) {
-          newConflicts.push({
-            conflictId: crypto.randomUUID(),
-            sitio: importedAcc.sitio,
-            usuario: importedAcc.usuario,
-            versionLocal: { ...localByMatch },
-            versionImportada: { ...importedAcc },
-            detectedAt: new Date().toISOString(),
-          });
+          const key = `${importedAcc.sitio.toLowerCase()}|${importedAcc.usuario.toLowerCase()}`;
+          if (!existingConflictKeys.has(key)) {
+            newConflicts.push({
+              conflictId: crypto.randomUUID(),
+              sitio: importedAcc.sitio,
+              usuario: importedAcc.usuario,
+              versionLocal: { ...localByMatch },
+              versionImportada: { ...importedAcc },
+              detectedAt: new Date().toISOString(),
+            });
+            existingConflictKeys.add(key);
+          }
         } else if (new Date(importedAcc.updatedAt) > new Date(localByMatch.updatedAt)) {
           const idx = mergedAccounts.indexOf(localByMatch);
           mergedAccounts[idx] = { ...importedAcc };
