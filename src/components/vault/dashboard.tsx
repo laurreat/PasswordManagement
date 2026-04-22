@@ -58,15 +58,15 @@ export function Dashboard() {
     setShowPassword(false);
   }, [view]);
 
-  const filteredAccounts = vault?.accounts.filter(a => 
+  const filteredAccounts = vault?.accounts.filter((a: AccountEntry) => 
     a.sitio.toLowerCase().includes(searchTerm.toLowerCase()) || 
     a.usuario.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
   const stats = useMemo(() => {
     if (!vault) return { total: 0, compromised: 0, weak: 0 };
-    const compromised = Object.values(auditResults).filter(r => r.isCompromised).length;
-    const weak = Object.values(auditResults).filter(r => r.isCommon).length;
+    const compromised = Object.values(auditResults).filter((r: PasswordSecurityAuditOutput) => r.isCompromised).length;
+    const weak = Object.values(auditResults).filter((r: PasswordSecurityAuditOutput) => r.isCommon).length;
     return { total: vault.accounts.length, compromised, weak };
   }, [vault, auditResults]);
 
@@ -135,7 +135,7 @@ export function Dashboard() {
 
     await updateVault(v => ({
       ...v,
-      accounts: v.accounts.map(a => a.id === selectedAccount.id ? updatedAccount : a)
+      accounts: v.accounts.map((a: AccountEntry) => a.id === selectedAccount?.id ? updatedAccount : a)
     }));
 
     setSelectedAccount(updatedAccount);
@@ -455,7 +455,7 @@ export function Dashboard() {
                           <Upload className="w-5 h-5" /> {t('settings.import_title')}
                         </h3>
                         <p className="text-sm text-muted-foreground">{t('settings.import_desc')}</p>
-                        <Dialog open={importDialogOpen} onOpenChange={(open) => {
+                        <Dialog open={importDialogOpen} onOpenChange={(open: boolean) => {
                           setImportDialogOpen(open);
                           if (!open) {
                             setImportPassword("");

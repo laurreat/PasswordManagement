@@ -1,51 +1,55 @@
-# LocalPass - Secure Offline Password Manager
+# LocalPass - Gestor de Contraseñas Seguro (Escritorio)
 
-LocalPass is a high-security password manager designed to operate 100% offline. Unlike other managers, your credentials never leave your device and are protected by military-grade encryption standards.
+LocalPass es un gestor de contraseñas de alta seguridad diseñado para funcionar 100% offline. A diferencia de otros gestores, tus credenciales nunca salen de tu dispositivo y están protegidas con estándares de encriptación de grado militar.
 
-## Core Features
+**Esta es una aplicación de escritorio Electron.** Todo funciona de manera local en tu dispositivo:
+- No requiere conexión a internet
+- No utiliza navegadores ni servidores externos
+- Los datos se almacenan localmente en tu computadora
+- El archivo .exe portable o el instalador funcionan solos
 
-- **Total Privacy (Air-Gapped by Design):** No servers, no cloud databases, no telemetry. Everything is processed on the client (browser).
-- **AES-256-GCM Encryption:** Uses the native browser Web Crypto API to encrypt data.
-- **Robust Key Derivation:** Implements PBKDF2 with SHA-512 and 210,000 iterations to protect your Master Password against brute-force attacks.
-- **Local Password Generator:** Create secure keys with customizable parameters without sending data to the internet.
-- **Security Audit:** Integrated deterministic security agent that analyzes password robustness and detects common patterns locally.
-- **Smart Conflict Management:** Dedicated interface to resolve duplicates when importing or manually syncing vaults between devices.
-- **Multilingual Support:** Full interface in English and Spanish.
-- **Auto-Lock:** The vault closes automatically after 10 minutes of inactivity to protect your session.
+## Características Principales
 
-## Security Architecture
+- **Total Privacidad (Diseño Air-Gapped):** Sin servidores, sin bases de datos en la nube, sin telemetría. Todo se procesa localmente en la aplicación de escritorio.
+- **Encriptación AES-256-GCM:** Usa la API Web Crypto nativa del sistema para encriptar datos.
+- **Derivación de Clave Robusta:** Implementa PBKDF2 con SHA-512 y 210,000 iteraciones para proteger tu Contraseña Maestra contra ataques de fuerza bruta.
+- **Generador Local de Contraseñas:** Crea claves seguras con parámetros personalizables sin enviar datos a internet.
+- **Auditoría de Seguridad:** Agente de seguridad determinista integrado que analiza la robustez de contraseñas y detecta patrones comunes localmente.
+- **Gestión Inteligente de Conflictos:** Interfaz dedicada para resolver duplicados al importar o sincronizar vaults entre dispositivos.
+- **Soporte Multilingüe:** Interfaz completa en inglés y español.
+- **Auto-Bloqueo:** El vault se cierra automáticamente después de 10 minutos de inactividad para proteger tu sesión.
 
-1. **Master Password:** The user defines a key that is never stored.
-2. **Salt & IV:** Unique cryptographic random values are generated for each save session.
-3. **Derivation:** PBKDF2 is used to transform the password into a 256-bit CryptoKey.
-4. **Encryption:** Data is transformed into a JSON string, encrypted with AES-GCM, and stored as a Base64 blob in the browser's LocalStorage.
+## Arquitectura de Seguridad
 
-## Tech Stack
+1. **Contraseña Maestra:** El usuario define una clave que nunca se almacena.
+2. **Salt & IV:** Valores criptográficos aleatorios únicos se generan para cada sesión de guardado.
+3. **Derivación:** PBKDF2 se usa para transformar la contraseña en un CryptoKey de 256 bits.
+4. **Encriptación:** Los datos se transforman en un string JSON, se encriptan con AES-GCM, y se almacenan como un blob Base64 en un archivo local seguro en tu dispositivo.
 
-- **Frontend:** Next.js 15 (App Router), React 19, Tailwind CSS.
-- **UI Components:** Shadcn UI & Lucide Icons.
-- **Security:** Web Crypto API (Native).
-- **Storage:** LocalStorage (Encrypted).
+## Stack Tecnológico
 
-## How to Get Started
+- **Escritorio:** Electron + Next.js 15 (App Router), React 19, Tailwind CSS.
+- **Componentes UI:** Shadcn UI & Lucide Icons.
+- **Seguridad:** Web Crypto API (Nativo del sistema).
+- **Almacenamiento:** Archivo local encriptado (100% offline).
 
-### Web (desarrollo)
-1. Clone the repository.
-2. Install dependencies: `npm install`.
-3. Run the development environment: `npm run dev`.
-4. Open `http://localhost:9002` in your browser.
+## Cómo Empezar
 
-### Escritorio (Electron)
-- **Desarrollo:** `npm run dev` abre la app en una ventana de Electron (Next.js en el puerto 9002).
-- **Portable e instalador (100 % local):** El .exe portable y el instalador funcionan **solos**: no necesitan consola, ni `npm run dev`, ni internet. Solo ejecutas el .exe y la app abre.
-- **Mismas funciones en todos:** Importar/exportar, recuperar desde respaldo (si olvidaste la contraseña), fusión de conflictos, generador, auditoría, tema e idioma funcionan **igual** en web, portable e instalador. El mismo código se ejecuta en los tres.
-- **Build (Windows):**
-  1. **Cierra** cualquier ventana de LocalPass o Electron que esté abierta (evita el error "Access is denied").
-  2. `npm run build`
-  3. En `dist/` tendrás:
-     - **LocalPass-Setup-1.0.0.exe** — instalador (NSIS).
-     - **LocalPass-1.0.0-portable.exe** — portable: un solo .exe, sin instalación, sin dependencias.
-  4. Tras añadir nuevas funciones, vuelve a ejecutar `npm run build` para que el portable y el instalador incluyan los últimos cambios.
+### Escritorio (Desarrollo)
+1. Clona el repositorio.
+2. Instala las dependencias: `npm install`.
+3. Ejecuta el entorno de desarrollo: `npm run dev`.
+4. La aplicación se abrirá en una ventana de Electron (Next.js en el puerto 9002).
+
+> **Nota:** En desarrollo, la app usa Electron para simular el entorno de escritorio. En producción, usas el .exe portable o el instalador.
+
+### Builds de Escritorio (Windows)
+1. **Cierra** cualquier ventana de LocalPass o Electron que esté abierta (evita el error "Access is denied").
+2. `npm run build`
+3. En `dist/` tendrás:
+   - **LocalPass-Setup-1.0.0.exe** — instalador (NSIS).
+   - **LocalPass-1.0.0-portable.exe** — portable: un solo .exe, sin instalación, sin dependencias.
+4. Tras añadir nuevas funciones, vuelve a ejecutar `npm run build` para que el portable y el instalador incluyan los últimos cambios.
 
 ---
-**Security Note:** LocalPass does not have a "Recover Password" mechanism. If you forget your Master Password, your data is mathematically impossible to recover. Frequently back up your encrypted .json vault files.
+**Nota de Seguridad:** LocalPass no tiene un mecanismo de "Recuperar Contraseña". Si olvidas tu Contraseña Maestra, tus datos son matemáticamente imposibles de recuperar. Respald a frecuentemente tus archivos .json vault encriptados.

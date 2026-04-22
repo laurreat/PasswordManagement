@@ -11,7 +11,7 @@
     "dev:electron": "wait-on http://localhost:9002 && electron .",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "next build && npm run clean:dist && electron-builder",
+    "build": "run-s build:next clean:dist build:electron",
     "build:next": "next build",
     "build:electron": "electron-builder",
     "clean:dist": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
@@ -71,6 +71,7 @@
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
     "genkit-cli": "^1.20.0",
+    "npm-run-all": "^4.1.5",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
@@ -87,11 +88,23 @@
       "electron/**",
       "package.json"
     ],
-    "asarUnpack": ["out/**"],
+    "asarUnpack": [
+      "out/**"
+    ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "signAndEditExecutable": false
     },

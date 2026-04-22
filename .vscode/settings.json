@@ -1,0 +1,6 @@
+{
+  "typescript.preferences.importModuleSpecifier": "non-empty",
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.tsserverPluginPaths": []
+}
