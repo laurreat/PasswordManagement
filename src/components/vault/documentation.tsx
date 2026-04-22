@@ -2,8 +2,10 @@
 
 import { useUISettings } from "@/hooks/use-ui-settings";
 import { 
-  ShieldCheck, Lock, Globe, Database, Server, 
-  Cpu, FileCode, CheckCircle2, AlertCircle 
+  ShieldCheck, Lock, Globe, Database, 
+  Cpu, FileCode, CheckCircle2, AlertCircle,
+  Key, HardDrive, Wifi, WifiOff, Shield,
+  Clock, Trash2, Download, Users
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +60,7 @@ export function Documentation() {
           <Card>
             <CardContent className="pt-6 flex gap-4">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Lock className="w-6 h-6 text-primary" />
+                <Key className="w-6 h-6 text-primary" />
               </div>
               <div className="space-y-1">
                 <h4 className="font-bold">{t('documentation.pbkdf2_title')}</h4>
@@ -89,6 +91,53 @@ export function Documentation() {
 
       <div className="space-y-6">
         <div className="flex items-center gap-3 border-b pb-2">
+          <HardDrive className="w-6 h-6 text-blue-500" />
+          <h3 className="text-xl font-bold">{t('documentation.storage_title')}</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="pt-4 flex gap-3">
+              <HardDrive className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-sm">{t('documentation.storage_device_title')}</h4>
+                <p className="text-xs text-muted-foreground">{t('documentation.storage_device_desc')}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 flex gap-3">
+              <Shield className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-sm">{t('documentation.storage_encrypted_title')}</h4>
+                <p className="text-xs text-muted-foreground">{t('documentation.storage_encrypted_desc')}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-center gap-3 border-b pb-2">
+          <Clock className="w-6 h-6 text-orange-500" />
+          <h3 className="text-xl font-bold">{t('documentation.autolock_title')}</h3>
+        </div>
+        
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground mb-3">
+              {t('documentation.autolock_desc')}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary">{t('documentation.autolock_time')}</Badge>
+              <Badge variant="outline">{t('documentation.autolock_note')}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-center gap-3 border-b pb-2">
           <CheckCircle2 className="w-6 h-6 text-green-500" />
           <h3 className="text-xl font-bold">{t('documentation.practices_title')}</h3>
         </div>
@@ -107,6 +156,26 @@ export function Documentation() {
             <p className="text-sm font-medium">{t('documentation.practice_3')}</p>
           </div>
         </div>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-center gap-3 border-b pb-2">
+          <Download className="w-6 h-6 text-purple-500" />
+          <h3 className="text-xl font-bold">{t('documentation.backup_title')}</h3>
+        </div>
+        
+        <Card>
+          <CardContent className="pt-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {t('documentation.backup_desc')}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary">{t('documentation.backup_format')}</Badge>
+              <Badge variant="secondary">{t('documentation.backup_password')}</Badge>
+              <Badge variant="outline">{t('documentation.backup_warning')}</Badge>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="border-dashed">
