@@ -1,4 +1,4 @@
-const { app, BrowserWindow, protocol } = require('electron');
+const { app, BrowserWindow, protocol, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -34,8 +34,27 @@ protocol.registerSchemesAsPrivileged([
   { scheme: APP_PROTOCOL, privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
+function getIcon() {
+  const dirs = isDev 
+    ? [path.join(__dirname, 'public')]
+    : [getOutPath(), path.join(__dirname, '..')];
+  
+  for (const dir of dirs) {
+    const pngPath = path.join(dir, 'icon.png');
+    if (fs.existsSync(pngPath)) {
+      return nativeImage.createFromPath(pngPath).resize({ width: 256, height: 256 });
+    }
+    const svgPath = path.join(dir, 'icon.svg');
+    if (fs.existsSync(svgPath)) {
+      const svgContent = fs.readFileSync(svgPath, 'utf8');
+      return nativeImage.createFromBuffer(Buffer.from(svgContent));
+    }
+  }
+  return null;
+}
+
 function createWindow() {
-  mainWindow = new BrowserWindow({
+  const windowIcon = getIcon();
     width: 1200,
     height: 800,
     minWidth: 800,
@@ -47,7 +66,14 @@ function createWindow() {
       webSecurity: true,
     },
     show: false,
-  });
+    autoHideMenuBar: true,
+  };
+
+  if (windowIcon) {
+    windowConfig.icon = windowIcon;
+  }
+
+  mainWindow = new BrowserWindow(windowConfig);
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
 

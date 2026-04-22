@@ -11,10 +11,11 @@
     "dev:electron": "wait-on http://localhost:9002 && electron .",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "run-s build:next clean:dist build:electron",
+    "build": "run-s build:next clean:dist copy:icon build:electron",
     "build:next": "next build",
     "build:electron": "electron-builder",
     "clean:dist": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "copy:icon": "node -e \"const fs=require('fs');const p=require('path');['icon.svg','icon.png'].forEach(f=>{const src=p.join('public',f);const dst=p.join('out',f);if(fs.existsSync(src))fs.copyFileSync(src,dst);})\"",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
@@ -86,6 +87,7 @@
     "files": [
       "out/**",
       "electron/**",
+      "public/**",
       "package.json"
     ],
     "asarUnpack": [
@@ -106,6 +108,7 @@
           ]
         }
       ],
+      "icon": "public/icon.svg",
       "signAndEditExecutable": false
     },
     "nsis": {
