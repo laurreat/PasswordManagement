@@ -134,7 +134,7 @@ export function Documentation() {
       <div className="bg-yellow-500/5 border border-yellow-500/20 p-4 rounded-xl flex gap-3">
         <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0" />
         <div className="text-xs text-yellow-800 leading-relaxed">
-          <strong>Aviso de seguridad:</strong> El archivo JSON exportado contiene tus datos cifrados. Aunque el cifrado es extremadamente fuerte, debes guardar este archivo en un lugar seguro. La seguridad de tu bóveda depende directamente de la complejidad de tu <strong>Contraseña Maestra</strong>.
+          {t('documentation.export_warning')}
         </div>
       </div>
     </div>

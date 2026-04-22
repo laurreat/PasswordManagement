@@ -409,6 +409,15 @@ export function Dashboard() {
                           <Button variant={language === 'es' ? 'default' : 'outline'} className="flex-1" onClick={() => setLanguage('es')}>
                             {t('settings.spanish')}
                           </Button>
+                          <Button variant={language === 'pt' ? 'default' : 'outline'} className="flex-1" onClick={() => setLanguage('pt')}>
+                            {t('settings.portuguese')}
+                          </Button>
+                          <Button variant={language === 'fr' ? 'default' : 'outline'} className="flex-1" onClick={() => setLanguage('fr')}>
+                            {t('settings.french')}
+                          </Button>
+                          <Button variant={language === 'zh' ? 'default' : 'outline'} className="flex-1" onClick={() => setLanguage('zh')}>
+                            {t('settings.chinese')}
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
