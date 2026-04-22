@@ -27,9 +27,10 @@ import { toast } from "@/hooks/use-toast";
 import { passwordSecurityAudit, PasswordSecurityAuditOutput } from "@/ai/flows/password-security-audit";
 import { PasswordGenerator } from "./password-generator";
 import { ConflictResolver } from "./conflict-resolver";
+import { Documentation } from "./documentation";
 import { Textarea } from "@/components/ui/textarea";
 
-type ViewMode = 'accounts' | 'conflicts' | 'generator' | 'audit' | 'settings';
+type ViewMode = 'accounts' | 'conflicts' | 'generator' | 'audit' | 'settings' | 'documentation';
 
 export function Dashboard() {
   const { vault, updateVault, lock, exportVault, importVault } = useVault();
@@ -201,6 +202,11 @@ export function Dashboard() {
               <SidebarMenuItem>
                 <SidebarMenuButton isActive={view === 'settings'} onClick={() => setView('settings')}>
                   <Settings className="w-4 h-4" /> <span>{t('sidebar.settings')}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton isActive={view === 'documentation'} onClick={() => setView('documentation')}>
+                  <Info className="w-4 h-4" /> <span>{t('sidebar.documentation')}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -559,6 +565,8 @@ export function Dashboard() {
                   </div>
                 </div>
               )}
+
+              {view === 'documentation' && <Documentation />}
             </ScrollArea>
           </div>
         </main>
