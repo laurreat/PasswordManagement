@@ -55,6 +55,8 @@ function getIcon() {
 
 function createWindow() {
   const windowIcon = getIcon();
+  
+  const windowConfig = {
     width: 1200,
     height: 800,
     minWidth: 800,
