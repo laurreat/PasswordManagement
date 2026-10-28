@@ -8,7 +8,7 @@ const KEY_LEN = 32; // 256 bits for AES-256
 
 export async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
   const enc = new TextEncoder();
-  const passwordKey = await window.crypto.subtle.importKey(
+  const passwordKey = await globalThis.crypto.subtle.importKey(
     'raw',
     enc.encode(password),
     { name: 'PBKDF2' },
@@ -16,7 +16,7 @@ export async function deriveKey(password: string, salt: Uint8Array): Promise<Cry
     ['deriveBits', 'deriveKey']
   );
 
-  return window.crypto.subtle.deriveKey(
+  return globalThis.crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
       salt: salt as BufferSource,
@@ -32,8 +32,8 @@ export async function deriveKey(password: string, salt: Uint8Array): Promise<Cry
 
 export async function encryptData(data: string, key: CryptoKey): Promise<{ ciphertext: ArrayBuffer; iv: Uint8Array }> {
   const enc = new TextEncoder();
-  const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await window.crypto.subtle.encrypt(
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await globalThis.crypto.subtle.encrypt(
     {
       name: 'AES-GCM',
       iv,
@@ -46,7 +46,7 @@ export async function encryptData(data: string, key: CryptoKey): Promise<{ ciphe
 
 export async function decryptData(ciphertext: ArrayBuffer, key: CryptoKey, iv: Uint8Array): Promise<string> {
   const dec = new TextDecoder();
-  const decrypted = await window.crypto.subtle.decrypt(
+  const decrypted = await globalThis.crypto.subtle.decrypt(
     {
       name: 'AES-GCM',
       iv: iv as BufferSource,
@@ -63,11 +63,11 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  return window.btoa(binary);
+  return globalThis.btoa(binary);
 }
 
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binaryString = window.atob(base64);
+  const binaryString = globalThis.atob(base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {

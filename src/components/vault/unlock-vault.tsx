@@ -28,13 +28,15 @@ import {
 } from "@/components/ui/dialog";
 import { KeyRound, ShieldAlert, Trash2, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { toVaultErrorCode, type VaultErrorCode } from "@/lib/vault-errors";
+import { vaultErrorMessageKey } from "@/lib/vault-error-messages";
 
 export function UnlockVault() {
   const { unlock, resetVault, importVault } = useVault();
   const { t } = useUISettings();
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [errorCode, setErrorCode] = useState<VaultErrorCode | null>(null);
   const [recoverOpen, setRecoverOpen] = useState(false);
   const [recoverPassword, setRecoverPassword] = useState("");
   const [recoverFile, setRecoverFile] = useState<File | null>(null);
@@ -44,13 +46,17 @@ export function UnlockVault() {
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(false);
-    
-    const success = await unlock(password);
-    
-    if (!success) {
-      setError(true);
-      toast({ variant: "destructive", title: t('app.vault_locked'), description: t('app.incorrect_password') });
+    setErrorCode(null);
+
+    const result = await unlock(password);
+
+    if (!result.ok) {
+      setErrorCode(result.code);
+      toast({
+        variant: "destructive",
+        title: t('app.vault_locked'),
+        description: t(vaultErrorMessageKey(result.code)),
+      });
     }
     setIsLoading(false);
   };
@@ -74,15 +80,15 @@ export function UnlockVault() {
                 value={password}
                 onChange={e => {
                   setPassword(e.target.value);
-                  setError(false);
+                  setErrorCode(null);
                 }}
-                className={error ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={errorCode ? "border-destructive focus-visible:ring-destructive" : ""}
                 required
                 autoFocus
               />
-              {error && (
-                <p className="text-xs text-destructive flex items-center gap-1 font-medium">
-                  <ShieldAlert className="w-3 h-3" /> {t('app.incorrect_password')}
+              {errorCode && (
+                <p className="text-xs text-destructive flex items-center gap-1 font-medium" role="alert">
+                  <ShieldAlert className="w-3 h-3" /> {t(vaultErrorMessageKey(errorCode))}
                 </p>
               )}
             </div>
@@ -171,10 +177,11 @@ export function UnlockVault() {
                         setRecoverFile(null);
                         if (recoverFileInputRef.current) recoverFileInputRef.current.value = "";
                       } catch (err: unknown) {
+                        const code = toVaultErrorCode(err, 'backup_corrupted');
                         toast({
                           variant: "destructive",
                           title: "Error",
-                          description: err instanceof Error ? err.message : t('app.import_error'),
+                          description: t(vaultErrorMessageKey(code)),
                         });
                       } finally {
                         setRecoverLoading(false);

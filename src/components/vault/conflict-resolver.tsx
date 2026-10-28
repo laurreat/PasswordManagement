@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useVault } from "@/hooks/use-vault";
 import { useUISettings } from "@/hooks/use-ui-settings";
-import { ConflictEntry, AccountEntry } from "@/lib/types";
+import { AccountEntry, ConflictEntry } from "@/lib/types";
+import { applyConflictResolution, type ConflictSelection } from "@/lib/vault-merge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,19 +15,10 @@ export function ConflictResolver() {
   const { vault, updateVault } = useVault();
   const { t } = useUISettings();
 
-  const resolveConflict = async (conflictId: string, selection: 'local' | 'imported') => {
+  const resolveConflict = async (conflictId: string, selection: ConflictSelection) => {
     if (!vault) return;
 
-    const conflict = vault.conflicts.find(c => c.conflictId === conflictId);
-    if (!conflict) return;
-
-    const resolvedAccount = selection === 'local' ? conflict.versionLocal : conflict.versionImportada;
-
-    await updateVault(v => ({
-      ...v,
-      accounts: [...v.accounts.filter(a => !(a.sitio === conflict.sitio && a.usuario === conflict.usuario)), resolvedAccount],
-      conflicts: v.conflicts.filter(c => c.conflictId !== conflictId)
-    }));
+    await updateVault((current) => applyConflictResolution(current, conflictId, selection));
 
     toast({ title: t('conflicts.resolved_title'), description: t('conflicts.resolved_desc') });
   };

@@ -1,16 +1,22 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { VaultDecrypted, AccountEntry, ConflictEntry, VaultEncryptedFile, ExportPackage } from '@/lib/types';
-import { deriveKey, encryptData, decryptData, base64ToArrayBuffer, base64ToUint8Array, uint8ArrayToBase64, arrayBufferToBase64 } from '@/lib/crypto-utils';
+import type { AccountEntry, ConflictEntry, VaultDecrypted } from '@/lib/types';
+import { decryptVaultFile, encryptVault, buildExportPackage, emptyVault, parseVaultEnvelope, VAULT_STORAGE_KEY } from '@/lib/vault-storage';
+import { VaultError, toVaultErrorCode, type VaultErrorCode } from '@/lib/vault-errors';
+import { dedupeAccounts, mergeImportedVault } from '@/lib/vault-merge';
 import { toast } from '@/hooks/use-toast';
 import { useUISettings } from '@/hooks/use-ui-settings';
+
+export type UnlockResult =
+  | { ok: true }
+  | { ok: false; code: VaultErrorCode };
 
 interface VaultContextType {
   isLocked: boolean;
   isInitialized: boolean;
   vault: VaultDecrypted | null;
-  unlock: (password: string) => Promise<boolean>;
+  unlock: (password: string) => Promise<UnlockResult>;
   lock: () => void;
   resetVault: () => void;
   initialize: (password: string) => Promise<void>;
@@ -22,8 +28,15 @@ interface VaultContextType {
 
 const VaultContext = createContext<VaultContextType | null>(null);
 
-const STORAGE_KEY = 'localpass_vault';
 const AUTO_LOCK_MINUTES = 10;
+
+function writeStoredVault(payload: string): void {
+  try {
+    localStorage.setItem(VAULT_STORAGE_KEY, payload);
+  } catch {
+    throw new VaultError('vault_write_failed');
+  }
+}
 
 export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useUISettings();
@@ -33,8 +46,10 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [masterPassword, setMasterPassword] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    setIsInitialized(!!saved);
+    const saved = localStorage.getItem(VAULT_STORAGE_KEY);
+    // A damaged vault still counts as initialized: sending the user to setup
+    // would invite them to overwrite the file they may be able to recover.
+    setIsInitialized(Boolean(saved));
   }, []);
 
   const lock = useCallback(() => {
@@ -44,7 +59,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const resetVault = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(VAULT_STORAGE_KEY);
     setVault(null);
     setMasterPassword(null);
     setIsLocked(true);
@@ -53,15 +68,15 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     if (isLocked) return;
-    
-    let timer: NodeJS.Timeout;
+
+    let timer: ReturnType<typeof setTimeout>;
     const resetTimer = () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
         lock();
-        toast({ 
-          title: t('app.auto_lock_title'), 
-          description: t('app.auto_lock_desc') 
+        toast({
+          title: t('app.auto_lock_title'),
+          description: t('app.auto_lock_desc'),
         });
       }, AUTO_LOCK_MINUTES * 60 * 1000);
     };
@@ -76,239 +91,80 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [isLocked, lock, t]);
 
-  const unlock = async (password: string): Promise<boolean> => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return false;
+  const unlock = async (password: string): Promise<UnlockResult> => {
+    const saved = localStorage.getItem(VAULT_STORAGE_KEY);
+    if (!saved) return { ok: false, code: 'vault_missing' };
 
     try {
-      const encryptedFile: VaultEncryptedFile = JSON.parse(saved);
-      const salt = base64ToUint8Array(encryptedFile.salt);
-      const iv = base64ToUint8Array(encryptedFile.iv);
-      const ciphertext = base64ToArrayBuffer(encryptedFile.data);
-
-      const key = await deriveKey(password, salt);
-      const decryptedStr = await decryptData(ciphertext, key, iv);
-      
-      const decryptedVault: VaultDecrypted = JSON.parse(decryptedStr);
+      const envelope = parseVaultEnvelope(saved, 'stored');
+      const decryptedVault = await decryptVaultFile(envelope, password, 'stored');
       setVault(decryptedVault);
       setMasterPassword(password);
       setIsLocked(false);
-      return true;
-    } catch (e: any) {
-      return false;
+      setIsInitialized(true);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, code: toVaultErrorCode(error, 'vault_corrupted') };
     }
   };
 
   const saveVault = async (decrypted: VaultDecrypted, password: string) => {
-    const salt = window.crypto.getRandomValues(new Uint8Array(16));
-    const key = await deriveKey(password, salt);
-    
     decrypted.updatedAt = new Date().toISOString();
-    const { ciphertext, iv } = await encryptData(JSON.stringify(decrypted), key);
-
-    const file: VaultEncryptedFile = {
-      salt: uint8ArrayToBase64(salt),
-      iv: uint8ArrayToBase64(iv),
-      data: arrayBufferToBase64(ciphertext),
-      vaultVersion: "1.0"
-    };
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(file));
-    setVault(decrypted);
+    const encrypted = await encryptVault(decrypted, password);
+    writeStoredVault(JSON.stringify(encrypted));
+    setVault({ ...decrypted });
     setIsInitialized(true);
   };
 
   const initialize = async (password: string) => {
-    const newVault: VaultDecrypted = {
-      vaultVersion: "1.0",
-      deviceId: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      accounts: [],
-      conflicts: []
-    };
-    await saveVault(newVault, password);
+    const vaultToSave = emptyVault();
+    await saveVault(vaultToSave, password);
     setMasterPassword(password);
-    setVault(newVault);
     setIsLocked(false);
   };
 
   const updateVault = async (updater: (v: VaultDecrypted) => VaultDecrypted) => {
     if (!vault || !masterPassword) return;
+
     const updated = updater({ ...vault });
-    
-    const accounts = [...updated.accounts];
-    const conflicts = [...updated.conflicts];
-    const seen = new Map<string, AccountEntry>();
+    const { accounts, conflicts } = dedupeAccounts(updated.accounts, updated.conflicts);
 
-    for (const acc of accounts) {
-      const key = `${acc.sitio.toLowerCase()}|${acc.usuario.toLowerCase()}`;
-      const existing = seen.get(key);
-      
-      if (existing) {
-        if (existing.password !== acc.password) {
-          const alreadyHasConflict = conflicts.some(c => 
-            (c.versionLocal.password === existing.password && c.versionImportada.password === acc.password) ||
-            (c.versionLocal.password === acc.password && c.versionImportada.password === existing.password)
-          );
-
-          if (!alreadyHasConflict) {
-            conflicts.push({
-              conflictId: crypto.randomUUID(),
-              sitio: acc.sitio,
-              usuario: acc.usuario,
-              versionLocal: existing,
-              versionImportada: acc,
-              detectedAt: new Date().toISOString()
-            });
-          }
-        } else {
-          if (new Date(acc.updatedAt) > new Date(existing.updatedAt)) {
-            seen.set(key, acc);
-          }
-        }
-      } else {
-        seen.set(key, acc);
-      }
-    }
-
-    updated.accounts = Array.from(seen.values());
-    updated.conflicts = conflicts;
-    updated.updatedAt = new Date().toISOString();
-
-    await saveVault(updated, masterPassword);
+    await saveVault({ ...updated, accounts, conflicts }, masterPassword);
   };
 
-  const exportVault = () => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved || !vault) return "";
-    
-    const exportPackage: ExportPackage = {
-      exportVersion: "1.0",
-      exportedAt: new Date().toISOString(),
-      deviceId: vault.deviceId,
-      vaultData: JSON.parse(saved)
-    };
-    
-    return JSON.stringify(exportPackage, null, 2);
+  const exportVault = (): string => {
+    const saved = localStorage.getItem(VAULT_STORAGE_KEY);
+    if (!saved || !vault) return '';
+
+    const envelope = parseVaultEnvelope(saved, 'stored');
+    return JSON.stringify(buildExportPackage(vault, envelope), null, 2);
   };
 
   const importVault = async (fileContent: string, password: string) => {
-    const rawContent = fileContent.trim().replace(/^\uFEFF/, '');
-    if (!rawContent) throw new Error(t('app.import_error'));
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawContent);
-    } catch {
-      throw new Error(t('app.import_error'));
-    }
-
-    const encryptedData: VaultEncryptedFile = (parsed as any)?.vaultData ?? (parsed as any);
-    if (!encryptedData?.salt || !encryptedData?.iv || !encryptedData?.data) {
-      throw new Error(t('app.import_error'));
-    }
-
-    let decryptedStr: string;
-    try {
-      const salt = base64ToUint8Array(encryptedData.salt);
-      const iv = base64ToUint8Array(encryptedData.iv);
-      const ciphertext = base64ToArrayBuffer(encryptedData.data);
-      const key = await deriveKey(password, salt);
-      decryptedStr = await decryptData(ciphertext, key, iv);
-    } catch (e) {
-      throw new Error(t('app.import_wrong_password'));
-    }
-
-    let importedVault: VaultDecrypted;
-    try {
-      importedVault = JSON.parse(decryptedStr) as VaultDecrypted;
-    } catch {
-      throw new Error(t('app.import_error'));
-    }
-
-    const importedAccounts = Array.isArray(importedVault.accounts) ? importedVault.accounts : [];
-    const importedConflicts = Array.isArray(importedVault.conflicts) ? importedVault.conflicts : [];
+    const envelope = parseVaultEnvelope(fileContent, 'backup');
+    const importedVault = await decryptVaultFile(envelope, password, 'backup');
 
     if (!vault) {
-      const emptyVault: VaultDecrypted = {
-        vaultVersion: '1.0',
-        deviceId: importedVault.deviceId ?? crypto.randomUUID(),
-        createdAt: importedVault.createdAt ?? new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        accounts: importedAccounts,
-        conflicts: importedConflicts,
-      };
-      await saveVault(emptyVault, password);
+      await saveVault(importedVault, password);
       setMasterPassword(password);
       setIsLocked(false);
       toast({
         title: t('conflicts.synced_title'),
-        description: `${importedAccounts.length} ${t('form.accounts_imported')}`,
+        description: `${importedVault.accounts.length} ${t('form.accounts_imported')}`,
       });
       return;
     }
 
-    const mergedAccounts: AccountEntry[] = [...vault.accounts];
-    const newConflicts: ConflictEntry[] = [...vault.conflicts];
-
-    // Incluir conflictos del backup que no existan ya (mismo sitio+usuario)
-    const conflictKey = (c: ConflictEntry) => `${c.sitio.toLowerCase()}|${c.usuario.toLowerCase()}`;
-    const existingConflictKeys = new Set(newConflicts.map(conflictKey));
-    for (const c of importedConflicts) {
-      if (!existingConflictKeys.has(conflictKey(c))) {
-        newConflicts.push(c);
-        existingConflictKeys.add(conflictKey(c));
-      }
-    }
-
-    for (const importedAcc of importedAccounts) {
-      const localByMatch = mergedAccounts.find(
-        (a) =>
-          a.sitio.toLowerCase() === importedAcc.sitio.toLowerCase() &&
-          a.usuario.toLowerCase() === importedAcc.usuario.toLowerCase()
-      );
-
-      if (!localByMatch) {
-        mergedAccounts.push(importedAcc);
-      } else {
-        if (localByMatch.password !== importedAcc.password) {
-          const key = `${importedAcc.sitio.toLowerCase()}|${importedAcc.usuario.toLowerCase()}`;
-          if (!existingConflictKeys.has(key)) {
-            newConflicts.push({
-              conflictId: crypto.randomUUID(),
-              sitio: importedAcc.sitio,
-              usuario: importedAcc.usuario,
-              versionLocal: { ...localByMatch },
-              versionImportada: { ...importedAcc },
-              detectedAt: new Date().toISOString(),
-            });
-            existingConflictKeys.add(key);
-          }
-        } else if (new Date(importedAcc.updatedAt) > new Date(localByMatch.updatedAt)) {
-          const idx = mergedAccounts.indexOf(localByMatch);
-          mergedAccounts[idx] = { ...importedAcc };
-        }
-      }
-    }
-
-    const mergedVault: VaultDecrypted = {
-      ...vault,
-      accounts: mergedAccounts,
-      conflicts: newConflicts,
-      updatedAt: new Date().toISOString(),
-    };
-
-    await saveVault(mergedVault, masterPassword!);
-    setVault(mergedVault);
+    const merged = mergeImportedVault(vault, importedVault);
+    await saveVault(merged, masterPassword as string);
     toast({
       title: t('conflicts.synced_title'),
-      description: `${mergedAccounts.length} ${t('form.accounts_imported')}`,
+      description: `${merged.accounts.length} ${t('form.accounts_imported')}`,
     });
   };
 
   return (
-    <VaultContext.Provider value={{ 
+    <VaultContext.Provider value={{
       isLocked, isInitialized, vault, unlock, lock, resetVault, initialize, updateVault, saveVault, importVault, exportVault
     }}>
       {children}
@@ -321,3 +177,5 @@ export const useVault = () => {
   if (!context) throw new Error('useVault must be used within a VaultProvider');
   return context;
 };
+
+export type { AccountEntry, ConflictEntry };
