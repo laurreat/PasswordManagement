@@ -42,12 +42,25 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - `src/lib/security-audit.ts`: motor de auditoría local.
 - `src/components/vault/security-audit.tsx`: UI de auditoría con filtros,
   puntaje y recomendaciones por cuenta.
-- `tests/`: 41 tests con `node:test` para generador, vault, merge y auditoría.
+- `tests/`: 72 tests con `node:test` para generador, vault, merge, auditoría,
+  importación de CSV y paridad de traducciones.
 - Script `npm test`.
+- **Importación de CSV del navegador**: lee Chrome/Edge/Brave, Firefox,
+  Bitwarden y LastPass en una sola operación, normaliza las URLs, muestra un
+  resumen antes de confirmar y reutiliza las reglas de merge existentes.
+- `tests/translations.test.ts`: guarda que verifica paridad de claves entre los
+  cinco locales, que toda clave usada por la UI exista y que no se muestre una
+  clave cruda.
 - `public/fonts/`: cuatro archivos WOFF2 self-hosted.
 - **Icono de aplicación**: arte vectorial en `build/icon.svg`, maestro PNG en
   `build/icon.png` e icono de ventana en `public/icon.png`. Reemplaza el icono
   genérico de Electron en el `.exe`, el instalador y el portable.
+
+### Corregido
+
+- **Generador**: faltaban `generator.entropy_label`, `generator.local_note` y
+  `generator.exclude_ambiguous` en los cinco locales; la UI mostraba la clave
+  cruda. La guarda de traducciones evita que vuelva a pasar.
 
 ### Eliminado
 

@@ -94,6 +94,7 @@ PasswordManagement/
 │       ├── vault-errors.ts        Taxonomía de errores
 │       ├── vault-error-messages.ts Claves i18n por código
 │       ├── vault-merge.ts         Importación y conflictos
+│       ├── browser-csv.ts         Importación de CSV del navegador
 │       ├── password-generator.ts  Generación con CSPRNG
 │       ├── security-audit.ts      Motor de auditoría
 │       ├── types.ts               Tipos del dominio
@@ -194,6 +195,27 @@ La identidad de una cuenta es `sitio + usuario`, sin distinguir mayúsculas.
   identidad divergente y no duplica conflictos ya conocidos.
 - `applyConflictResolution`: aplica la elección del usuario conservando el orden
   de las cuentas.
+
+### `src/lib/browser-csv.ts`
+
+Importa el CSV en texto plano que exportan Chrome, Edge, Brave, Firefox,
+Bitwarden y LastPass. El archivo lo lee el renderer y nunca sale del equipo.
+
+- `parseCsvRows` implementa RFC 4180: comillas, `""` escapado, comas y saltos de
+  línea embebidos, CRLF y BOM.
+- `detectDelimiter` elige `,`, `;` o tabulador a partir de la cabecera.
+- `detectFormat` reconoce los cinco exportadores; un archivo desconocido lanza
+  `CsvImportError('csv_unrecognized_format')`.
+- `normalizeSite` reduce la URL a un hostname porque la vista de detalle arma
+  `https://${sitio}`. `android://<hash>@pkg` se reduce al package name y los
+  esquemas no web usan la columna `name`.
+- `previewCsvImport` cuenta cuentas nuevas, conflictos y filas ya actualizadas
+  sin tocar el vault.
+- `applyCsvImport` descarta las filas idénticas (mismo `sitio + usuario` y mismo
+  password) para no perder notas ni historial local, y delega el resto en
+  `mergeImportedVault`, que registra conflictos en lugar de sobrescribir.
+- Límites: 5 MB y 20.000 filas. Los duplicados dentro del archivo se colapsan
+  quedándose con la última aparición.
 
 ### `src/lib/password-generator.ts`
 
@@ -344,6 +366,10 @@ severidad y hallazgos. El puntaje del vault es el promedio de sus cuentas.
   configuración y documentación.
 - La auditoría se recalcula en memoria con `useMemo` sobre el vault; no hay
   botón "ejecutar" ni llamada externa.
+- La configuración incluye la importación de CSV del navegador: se elige el
+  archivo, se muestra un resumen (nuevas, conflictos, ya actualizadas, omitidas)
+  y se confirma la importación. El CSV no está cifrado, así que la tarjeta pide
+  borrarlo después de importar.
 - Todos los textos visibles pasan por `translations.ts` con cinco locales.
 
 ---
@@ -401,8 +427,8 @@ directamente (Node 22+ hace type stripping) y por eso `tsconfig.json` habilita
 `allowImportingTsExtensions`. `tests/package.json` declara `"type": "module"`
 para que los archivos de test se interpreten como ESM sin warnings.
 
-Cobertura actual: generador, formato/cifrado del vault, reglas de merge y motor
-de auditoría (41 tests).
+Cobertura actual: generador, formato/cifrado del vault, reglas de merge, motor
+de auditoría, importación de CSV y paridad de traducciones (72 tests).
 
 ---
 
@@ -415,6 +441,12 @@ de auditoría (41 tests).
   exposiciones reales.
 - No hay auto-updater ni firma de código configurada.
 - El empaquetado está limitado a Windows x64.
+- La importación de CSV sólo acepta UTF-8. Un export UTF-16 (por ejemplo, de
+  Excel) se rechaza como formato desconocido en lugar de adivinarse.
+- El CSV sigue en disco hasta que el usuario lo borra; la aplicación no puede
+  eliminarlo.
+- Bitwarden incluye notas, tarjetas e identidades en el mismo export: sólo se
+  importan los ítems de tipo `login`, porque LocalPass modela credenciales.
 - El renderer usa `script-src 'unsafe-inline'` porque el export estático de
   Next.js emite payloads de hidratación inline. Ver `docs/SECURITY.md`.
 

@@ -56,6 +56,7 @@ almacena ni se transmite. Si se olvida, el vault es irrecuperable por diseño.
 | XSS desde datos del usuario | React escapa por defecto; no se usa `dangerouslySetInnerHTML` |
 | Apertura de ventanas o navegación inesperada | Guardas en el proceso principal |
 | Acceso a archivos fuera de `out/` | Verificación de path traversal en el protocolo `app://` |
+| CSV de navegador en texto plano | Se lee en memoria del renderer, nunca se envía; la UI recuerda borrarlo |
 
 ### Fuera del alcance
 
@@ -67,6 +68,7 @@ almacena ni se transmite. Si se olvida, el vault es irrecuperable por diseño.
 | Acceso físico con la app desbloqueada | El auto-bloqueo reduce la ventana, no la elimina |
 | Ataques de canal lateral (tiempo, caché) | Fuera del modelo de una app de escritorio |
 | Filtraciones del servicio remoto | LocalPass no puede saber si un sitio fue vulnerado |
+| El CSV original en disco | La app no puede borrarlo; eliminarlo queda a cargo del usuario |
 
 ---
 
@@ -240,6 +242,7 @@ El vault distingue errores que antes se confundían:
 | `vault_unsupported_version` | Versión de formato no soportada |
 | `vault_write_failed` | No se pudo guardar |
 | `backup_*` | Equivalentes para archivos importados |
+| `csv_empty`, `csv_unrecognized_format`, `csv_too_large` | El CSV no se pudo leer (vacío, formato desconocido o demasiado grande) |
 
 Un vault dañado no se trata como "no inicializado": la app no ofrece crear uno
 nuevo encima del archivo que el usuario quizá pueda recuperar.
