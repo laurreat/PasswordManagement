@@ -17,14 +17,17 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger 
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { passwordSecurityAudit, PasswordSecurityAuditOutput } from "@/ai/flows/password-security-audit";
+import { toVaultErrorCode } from "@/lib/vault-errors";
+import { vaultErrorMessageKey } from "@/lib/vault-error-messages";
+import { auditVault } from "@/lib/security-audit";
+import { SecurityAudit } from "./security-audit";
 import { PasswordGenerator } from "./password-generator";
 import { ConflictResolver } from "./conflict-resolver";
 import { Documentation } from "./documentation";
@@ -39,8 +42,6 @@ export function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedAccount, setSelectedAccount] = useState<AccountEntry | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [isAuditing, setIsAuditing] = useState(false);
-  const [auditResults, setAuditResults] = useState<Record<string, PasswordSecurityAuditOutput>>({});
   const [showPassword, setShowPassword] = useState(false);
   
   const [isEditing, setIsEditing] = useState(false);
@@ -65,10 +66,13 @@ export function Dashboard() {
 
   const stats = useMemo(() => {
     if (!vault) return { total: 0, compromised: 0, weak: 0 };
-    const compromised = Object.values(auditResults).filter((r: PasswordSecurityAuditOutput) => r.isCompromised).length;
-    const weak = Object.values(auditResults).filter((r: PasswordSecurityAuditOutput) => r.isCommon).length;
-    return { total: vault.accounts.length, compromised, weak };
-  }, [vault, auditResults]);
+    const audit = auditVault(vault);
+    return {
+      total: vault.accounts.length,
+      compromised: audit.counts.critical + audit.counts.high,
+      weak: audit.counts.medium,
+    };
+  }, [vault]);
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -141,22 +145,6 @@ export function Dashboard() {
     setSelectedAccount(updatedAccount);
     setIsEditing(false);
     toast({ title: t('dashboard.last_update') });
-  };
-
-  const runAudit = async () => {
-    if (!vault) return;
-    setIsAuditing(true);
-    const results: Record<string, PasswordSecurityAuditOutput> = { ...auditResults };
-    
-    for (const acc of vault.accounts) {
-      const audit = await passwordSecurityAudit({ password: acc.password });
-      results[acc.id] = audit;
-      await new Promise(r => setTimeout(r, 50));
-    }
-    
-    setAuditResults(results);
-    setIsAuditing(false);
-    toast({ title: t('audit.complete') });
   };
 
   return (
@@ -341,57 +329,7 @@ export function Dashboard() {
 
               {view === 'generator' && <PasswordGenerator />}
               {view === 'conflicts' && <ConflictResolver />}
-              {view === 'audit' && (
-                <div className="max-w-4xl mx-auto space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-2xl font-headline font-bold">{t('audit.title')}</h2>
-                      <p className="text-muted-foreground">{t('audit.desc')}</p>
-                    </div>
-                    <Button onClick={runAudit} disabled={isAuditing} className="gap-2">
-                      <ShieldCheck className="w-4 h-4" /> {isAuditing ? t('audit.analyzing') : t('audit.run')}
-                    </Button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {vault?.accounts.map(acc => {
-                      const result = auditResults[acc.id];
-                      return (
-                        <Card key={acc.id} className="overflow-hidden">
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-3">
-                                <Globe className="w-5 h-5 text-accent" />
-                                <span className="font-bold">{acc.sitio}</span>
-                                <span className="text-muted-foreground text-sm">({acc.usuario})</span>
-                              </div>
-                              {result ? (
-                                <Badge variant={result.isCompromised || result.isCommon ? "destructive" : "default"} className={result.isCompromised || result.isCommon ? "" : "bg-green-500 hover:bg-green-600"}>
-                                  {result.isCompromised ? t('audit.status_compromised') : result.isCommon ? t('audit.status_weak') : t('audit.status_secure')}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline">{t('audit.no_analysis')}</Badge>
-                              )}
-                            </div>
-                            {result && (
-                              <div className="bg-muted/30 p-4 rounded-lg text-sm border">
-                                <p className="font-semibold mb-2">{t('audit.suggestions_title')}</p>
-                                <ul className="space-y-1 list-disc list-inside text-muted-foreground">
-                                  {result.issueCodes.length > 0 ? result.issueCodes.map(code => (
-                                    <li key={code}>{t(`audit.${code}`)}</li>
-                                  )) : (
-                                    <li>{t('audit.secure_msg')}</li>
-                                  )}
-                                </ul>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {view === 'audit' && <SecurityAudit />}
 
               {view === 'settings' && (
                 <div className="max-w-2xl mx-auto space-y-8 pb-20">
@@ -446,12 +384,17 @@ export function Dashboard() {
                         <p className="text-sm text-muted-foreground">{t('settings.export_desc')}</p>
                         <Button variant="outline" className="w-full gap-2" onClick={() => {
                           const data = exportVault();
+                          if (!data) {
+                            toast({ variant: "destructive", title: t('app.error_vault_missing') });
+                            return;
+                          }
                           const blob = new Blob([data], { type: 'application/json' });
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement('a');
                           a.href = url;
                           a.download = `localpass_vault_${new Date().toISOString().split('T')[0]}.json`;
                           a.click();
+                          URL.revokeObjectURL(url);
                         }}>
                           <Download className="w-4 h-4" /> {t('settings.export_button')}
                         </Button>
@@ -535,8 +478,12 @@ export function Dashboard() {
                                     setImportPassword("");
                                     setImportFile(null);
                                     if (importFileInputRef.current) importFileInputRef.current.value = "";
-                                  } catch (err: any) {
-                                    toast({ variant: "destructive", title: "Error", description: err?.message ?? t('app.import_error') });
+                                  } catch (err: unknown) {
+                                    toast({
+                                      variant: "destructive",
+                                      title: "Error",
+                                      description: t(vaultErrorMessageKey(toVaultErrorCode(err, 'backup_corrupted'))),
+                                    });
                                   } finally {
                                     setImportLoading(false);
                                   }
