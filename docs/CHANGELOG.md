@@ -45,6 +45,9 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - `tests/`: 41 tests con `node:test` para generador, vault, merge y auditoría.
 - Script `npm test`.
 - `public/fonts/`: cuatro archivos WOFF2 self-hosted.
+- **Icono de aplicación**: arte vectorial en `build/icon.svg`, maestro PNG en
+  `build/icon.png` e icono de ventana en `public/icon.png`. Reemplaza el icono
+  genérico de Electron en el `.exe`, el instalador y el portable.
 
 ### Eliminado
 

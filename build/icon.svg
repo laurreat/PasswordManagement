@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>LocalPass app icon</title>
+  <desc>A blue safe with an amber keyhole on a deep navy rounded-square background.</desc>
+  <rect width="1024" height="1024" rx="190" fill="#0D1B2A"/>
+
+  <!-- Safe body -->
+  <path d="M330 238H694C758 238 806 286 806 350V680C806 744 758 792 694 792H330C266 792 218 744 218 680V350C218 286 266 238 330 238Z" fill="#3398DB"/>
+  <!-- Recessed door -->
+  <path d="M348 304H676C720 304 750 334 750 378V652C750 696 720 726 676 726H348C304 726 274 696 274 652V378C274 334 304 304 348 304Z" fill="#0D1B2A"/>
+  <path d="M358 326H666C700 326 728 354 728 388V642C728 676 700 704 666 704H358C324 704 296 676 296 642V388C296 354 324 326 358 326Z" fill="#17324A"/>
+
+  <!-- Hinges on the right -->
+  <path d="M730 370H754C777 370 792 385 792 408V450C792 473 777 488 754 488H730Z" fill="#0D1B2A"/>
+  <rect x="716" y="384" width="54" height="72" rx="14" fill="#3398DB"/>
+  <path d="M730 542H754C777 542 792 557 792 580V622C792 645 777 660 754 660H730Z" fill="#0D1B2A"/>
+  <rect x="716" y="556" width="54" height="72" rx="14" fill="#3398DB"/>
+
+  <!-- Feet -->
+  <path d="M292 772H382V804C382 818 372 828 358 828H316C302 828 292 818 292 804Z" fill="#3398DB"/>
+  <path d="M642 772H732V804C732 818 722 828 708 828H666C652 828 642 818 642 804Z" fill="#3398DB"/>
+
+  <!-- Keyhole medallion and negative-space keyhole -->
+  <circle cx="512" cy="516" r="130" fill="#F59E0B"/>
+  <path d="M512 438C477 438 450 465 450 500C450 523 462 542 480 553L464 610C462 618 467 624 475 624H549C557 624 562 618 560 610L544 553C562 542 574 523 574 500C574 465 547 438 512 438Z" fill="#0D1B2A"/>
+</svg>

@@ -9,7 +9,7 @@
     "dev": "concurrently -k \"npm run dev:next\" \"npm run dev:electron\"",
     "dev:next": "next dev -p 9002",
     "dev:electron": "wait-on http://localhost:9002 && electron .",
-    "copy:icon": "node -e \"const fs=require('fs');const p=require('path');['icon.svg'].forEach(f=>{const src=p.join('public',f);const dst=p.join('out',f);if(fs.existsSync(src))fs.copyFileSync(src,dst);})\"",
+    "copy:icon": "node -e \"const fs=require('fs');const p=require('path');['icon.svg','icon.png'].forEach(f=>{const src=p.join('public',f);const dst=p.join('out',f);if(fs.existsSync(src))fs.copyFileSync(src,dst);})\"",
     "build": "run-s build:next copy:icon build:electron",
     "build:next": "next build",
     "build:electron": "electron-builder",
@@ -99,7 +99,8 @@
           ]
         }
       ],
-      "signAndEditExecutable": false
+      "icon": "build/icon.png",
+      "signExecutable": false
     },
     "nsis": {
       "oneClick": false,

@@ -98,15 +98,13 @@ function getIcon() {
     ? [path.join(__dirname, '..', 'public')]
     : [getOutPath(), path.join(__dirname, '..')];
 
+  // nativeImage only decodes raster formats, so the window icon must be a PNG.
+  // In a packaged build the executable already carries the icon; this keeps the
+  // dev window from showing the default Electron logo in the taskbar.
   for (const dir of dirs) {
     const pngPath = path.join(dir, 'icon.png');
     if (fs.existsSync(pngPath)) {
       return nativeImage.createFromPath(pngPath).resize({ width: 256, height: 256 });
-    }
-    const svgPath = path.join(dir, 'icon.svg');
-    if (fs.existsSync(svgPath)) {
-      const svgContent = fs.readFileSync(svgPath, 'utf8');
-      return nativeImage.createFromBuffer(Buffer.from(svgContent));
     }
   }
   return null;

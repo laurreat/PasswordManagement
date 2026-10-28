@@ -355,12 +355,31 @@ npm run build
 ```
 
 1. `next build` genera el export estático en `out/` (Turbopack).
-2. `copy:icon` copia el icono a `out/`.
+2. `copy:icon` copia `icon.svg` e `icon.png` a `out/`.
 3. `electron-builder` empaqueta `out/`, `electron/`, `public/` y `package.json`
    en un instalador NSIS y un portable.
 
 `node_modules` se excluye del paquete: el renderer ya viene compilado y el
 proceso principal sólo usa módulos nativos de Electron y Node.
+
+### Icono de la aplicación
+
+| Archivo | Rol |
+|---------|-----|
+| `build/icon.svg` | Fuente vectorial (1024×1024) |
+| `build/icon.png` | Maestro 1024×1024; electron-builder deriva el `.ico` multi-tamaño para el `.exe`, el instalador NSIS y el portable |
+| `public/icon.svg` | Copia servida al renderer |
+| `public/icon.png` | Icono de la ventana en desarrollo y en el build |
+
+`win.icon` apunta a `build/icon.png` y `win.signExecutable: false` permite que
+electron-builder edite los recursos del ejecutable (icono y metadatos) sin
+firmarlo. Con `signAndEditExecutable: false` el `.exe` se quedaba con el icono
+genérico de Electron.
+
+El arte es un contenedor navy con un keyhole ámbar. A 32 px se lee bien; a 16 px
+los detalles (bisagras, patas, medallón) se funden, que es el límite esperable
+de un icono con este nivel de detalle. `electron/main.js` sólo decodifica PNG
+para el icono de ventana: `nativeImage` no soporta SVG.
 
 ### Protocolo `app://`
 

@@ -72,6 +72,7 @@ work-unit commit per task plus a dedicated i18n commit and a docs commit.
 | S4 | Local security audit engine | inline | per-account + cross-account findings, score, severity, framework refs; UI renders them; unit tests pass | done |
 | S5 | Stack upgrade | inline | Next 16.4.3, Electron 45.1.0, React 19.3.1; `typecheck` and `build` green | done |
 | S6 | Documentation | inline | TECHNICAL/SECURITY/CHANGELOG/README match the implementation | done |
+| S7 | Application icon | inline | vector source committed; `.exe`, installer and portable carry the mark; window icon resolves in dev and prod | done |
 
 ## Progress
 
@@ -82,8 +83,11 @@ work-unit commit per task plus a dedicated i18n commit and a docs commit.
 - [x] S3 — `422b31f` feat(security): enforce offline operation in the desktop
       shell
 - [x] S5 — `baa828d` chore(deps): upgrade to Next.js 16.4.3 and Electron 45.1.0
-- [x] i18n — `translations.ts` updated for en/es/pt/fr/zh
-- [x] S6 — docs and this task document
+- [x] i18n — `1171ad1` `translations.ts` updated for en/es/pt/fr/zh
+- [x] S6 — `0a01752` docs and this task document
+- [x] S7 — application icon: the LocalPass mark replaced the default Electron
+      logo in the `.exe`, the installer and the portable (`feat(brand)`,
+      committed after the documentation commit)
 
 ## Verification
 
@@ -104,8 +108,6 @@ Observed on 2026-10-28, Node v24.18.1, npm 12.2.0, Windows x64:
 
 ## Known limitations
 
-- The packaged executable uses the default Electron icon: the repo only ships
-  `public/icon.svg`, which electron-builder cannot use as a Windows icon.
 - No code-signing certificate is configured; the installer and portable are
   unsigned.
 - The packaged application was built successfully but not smoke-tested by
