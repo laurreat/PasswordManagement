@@ -86,25 +86,29 @@ Para acceder a tus contraseñas:
 
 ## Auditoría de Seguridad
 
-### Ejecutar Auditoría
+La auditoría se ejecuta **automáticamente** al abrir la sección. No hay botón
+"ejecutar" ni llamada externa: todo el análisis ocurre en el equipo.
 
-1. Ve a la sección **"Auditoría"**
-2. Revisa la lista de contraseñas
-3. Cada cuenta muestra su nivel de seguridad
+### Interpretar resultados
 
-### Interpretar Resultados
+1. Ve a la sección **"Auditoría"**.
+2. Revisa el puntaje del vault (0–100) y el conteo por severidad.
+3. Cada cuenta muestra su puntaje, su estado y las recomendaciones aplicables.
 
 | Indicador | Significado | Acción |
-|-----------|--------------|--------|
-| **Rojo** | Comprometida o muy débil | Cambiar inmediatamente |
-| **Amarillo** | Moderada | Considerar cambiarla |
-| **Verde** | Segura | Mantener |
+|-----------|-------------|--------|
+| **Crítica** | Contraseña vacía, común o claramente débil | Cambiar de inmediato |
+| **Alta** | Corta, contiene la cuenta o está reutilizada | Cambiar pronto |
+| **Media** | Secuencias, repeticiones o similitud con otra | Revisar |
+| **Baja** | Falta una clase de carácter | Mejorar si es posible |
+| **Informativa** | Contraseña antigua o cuenta duplicada | Sin urgencia |
 
-### Después de la Auditoría
+Los filtros permiten ver sólo cuentas con hallazgos, con contraseñas
+reutilizadas o sin problemas. Cada recomendación indica el framework de
+referencia (NIST, OWASP, CWE) que la respalda.
 
-1. Identifica contraseñas marcadas en rojo/amarillo
-2. Usa el generador para crear nuevas
-3. Actualiza cada cuenta afectada
+> La auditoría es local y determinista. No comprueba filtraciones reales en
+> internet porque la aplicación no se conecta a la red.
 
 ---
 
@@ -161,27 +165,26 @@ Cuando importas un vault pueden existir duplicados:
 
 ### Idioma
 
-- **Español**: Interfaz en español
-- **English**: Interface in English
+- **English**
+- **Español**
+- **Português**
+- **Français**
+- **中文**
 
 ### Auto-bloqueo
 
-- **5 minutos**: Bloqueo rápido
-- **10 minutos**: Bloqueo estándar
-- **30 minutos**: Bloqueo lento
-- **Nunca**: Solo cierre manual
+El vault se bloquea automáticamente tras **10 minutos** sin actividad
+(movimiento del mouse, teclado, scroll o toque). No es configurable desde la
+interfaz.
 
 ---
 
 ## Atajos de Teclado
 
-| Acción | Atajo |
-|--------|-------|
-| **Nueva cuenta** | `Ctrl + N` |
-| **Buscar** | `Ctrl + F` |
-| **Copiar contraseña** | `Ctrl + Shift + C` |
-| **Bloquear vault** | `Ctrl + L` |
-| **Exportar** | `Ctrl + E` |
+La aplicación no define atajos globales propios. Funcionan los atajos estándar
+del sistema dentro de los campos de texto (copiar, pegar, seleccionar todo) y
+`Tab` para navegar entre controles. El menú de la aplicación está deshabilitado
+en producción.
 
 ---
 

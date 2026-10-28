@@ -108,8 +108,8 @@ npm run dev
 # Verificación de tipos
 npm run typecheck
 
-# Linting
-npm run lint
+# Tests unitarios
+npm test
 ```
 
 ### Build

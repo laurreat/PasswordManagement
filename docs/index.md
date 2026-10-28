@@ -1,22 +1,22 @@
-# LocalPass - Índice de Documentación
+# LocalPass — Índice de documentación
 
 ---
 
-## Para Usuarios
+## Para usuarios
 
 | Documento | Descripción |
 |-----------|-------------|
-| [README.md](../README.md) | Introducción y guía de inicio rápido |
-| [docs/USER_GUIDE.md](./USER_GUIDE.md) | Guía completa de uso de la aplicación |
+| [README.md](../README.md) | Introducción, características y inicio rápido |
+| [docs/USER_GUIDE.md](./USER_GUIDE.md) | Guía completa de uso |
 
 ---
 
-## Para Desarrolladores
+## Para desarrolladores
 
 | Documento | Descripción |
 |-----------|-------------|
-| [docs/TECHNICAL.md](./TECHNICAL.md) | Especificación técnica, arquitectura y stack |
-| [docs/API.md](./API.md) | API de componentes y módulos |
+| [docs/TECHNICAL.md](./TECHNICAL.md) | Arquitectura, módulos, formato del vault y build |
+| [docs/CONTRIBUTING.md](./CONTRIBUTING.md) | Guía para contribuciones |
 
 ---
 
@@ -24,7 +24,7 @@
 
 | Documento | Descripción |
 |-----------|-------------|
-| [docs/SECURITY.md](./SECURITY.md) | Políticas de seguridad y medidas de protección |
+| [docs/SECURITY.md](./SECURITY.md) | Modelo de amenazas, criptografía, CSP y frameworks |
 
 ---
 
@@ -32,36 +32,36 @@
 
 | Documento | Descripción |
 |-----------|-------------|
-| [docs/blueprint.md](./blueprint.md) | Diseño original y características |
-| [docs/CHANGELOG.md](./CHANGELOG.md) | Historial de cambios del proyecto |
-| [docs/CONTRIBUTING.md](./CONTRIBUTING.md) | Guía para contribuciones |
-| [docs/ROADMAP.md](./ROADMAP.md) | Roadmap del proyecto |
+| [docs/blueprint.md](./blueprint.md) | Diseño original |
+| [docs/CHANGELOG.md](./CHANGELOG.md) | Historial de cambios |
+| [docs/ROADMAP.md](./ROADMAP.md) | Roadmap |
 
 ---
 
-## Estructura de Archivos
+## Estructura de archivos
 
 ```
 docs/
 ├── index.md           # Este archivo
-├── README.md          # → /README.md
 ├── USER_GUIDE.md      # Guía de usuario
 ├── TECHNICAL.md       # Especificación técnica
-├── SECURITY.md       # Documentación de seguridad
-├── CHANGELOG.md      # Registro de cambios
-├── CONTRIBUTING.md   # Guía de contribuciones
-└── ROADMAP.md       # Roadmap del proyecto
+├── SECURITY.md        # Documentación de seguridad
+├── CHANGELOG.md       # Registro de cambios
+├── CONTRIBUTING.md    # Guía de contribuciones
+├── ROADMAP.md         # Roadmap del proyecto
+└── blueprint.md       # Diseño original
 ```
 
 ---
 
-## Enlaces Rápidos
+## Enlaces rápidos
 
-- **Empezar**: [USER_GUIDE.md](./USER_GUIDE.md#primeros-pasos)
-- **Seguridad**: [SECURITY.md](./SECURITY.md#principios-de-seguridad)
-- **Desarrollo**: [TECHNICAL.md](./TECHNICAL.md#arquitectura-de-archivos)
+- **Empezar**: [README.md](../README.md)
+- **Uso**: [USER_GUIDE.md](./USER_GUIDE.md)
+- **Seguridad**: [SECURITY.md](./SECURITY.md)
+- **Desarrollo**: [TECHNICAL.md](./TECHNICAL.md)
 - **Contribuir**: [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ---
 
-**Última actualización**: Abril 2026
+**Última actualización**: Octubre 2026

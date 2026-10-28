@@ -1,55 +1,138 @@
-# LocalPass - Gestor de Contraseñas Seguro (Escritorio)
+# LocalPass — Gestor de contraseñas local (escritorio)
 
-LocalPass es un gestor de contraseñas de alta seguridad diseñado para funcionar 100% offline. A diferencia de otros gestores, tus credenciales nunca salen de tu dispositivo y están protegidas con estándares de encriptación de grado militar.
+LocalPass es un gestor de contraseñas para Windows que funciona **sin conexión**.
+No hay servidor, no hay cuenta, no hay telemetría y no hay ningún servicio
+remoto: la aplicación no necesita internet en ningún momento, ni siquiera la
+primera vez.
 
-**Esta es una aplicación de escritorio Electron.** Todo funciona de manera local en tu dispositivo:
-- No requiere conexión a internet
-- No utiliza navegadores ni servidores externos
-- Los datos se almacenan localmente en tu computadora
-- El archivo .exe portable o el instalador funcionan solos
+## Qué significa "offline" en LocalPass
 
-## Características Principales
+El modo offline no es una promesa de marketing: está aplicado en la capa de
+Electron.
 
-- **Total Privacidad (Diseño Air-Gapped):** Sin servidores, sin bases de datos en la nube, sin telemetría. Todo se procesa localmente en la aplicación de escritorio.
-- **Encriptación AES-256-GCM:** Usa la API Web Crypto nativa del sistema para encriptar datos.
-- **Derivación de Clave Robusta:** Implementa PBKDF2 con SHA-512 y 210,000 iteraciones para proteger tu Contraseña Maestra contra ataques de fuerza bruta.
-- **Generador Local de Contraseñas:** Crea claves seguras con parámetros personalizables sin enviar datos a internet.
-- **Auditoría de Seguridad:** Agente de seguridad determinista integrado que analiza la robustez de contraseñas y detecta patrones comunes localmente.
-- **Gestión Inteligente de Conflictos:** Interfaz dedicada para resolver duplicados al importar o sincronizar vaults entre dispositivos.
-- **Soporte Multilingüe:** Interfaz completa en inglés y español.
-- **Auto-Bloqueo:** El vault se cierra automáticamente después de 10 minutos de inactividad para proteger tu sesión.
+- La política CSP de la ventana usa `default-src 'self'` y `connect-src 'none'`,
+  así que el renderer no puede abrir conexiones HTTP, WebSocket ni `fetch`.
+- Las tipografías se sirven desde `public/fonts`; no se carga nada desde un CDN.
+- La aplicación no incluye SDKs de nube, correo, SMS ni IA remota.
+- El renderer corre con `sandbox: true`, `contextIsolation: true`,
+  `nodeIntegration: false` y sin webviews.
+- La navegación y las ventanas nuevas están bloqueadas fuera del origen local.
+- No hay auto-actualizador ni comprobación de versiones.
 
-## Arquitectura de Seguridad
+Los datos del usuario nunca salen del equipo: el vault cifrado se guarda en el
+`localStorage` del perfil de Electron, y las exportaciones son archivos que el
+usuario elige dónde guardar.
 
-1. **Contraseña Maestra:** El usuario define una clave que nunca se almacena.
-2. **Salt & IV:** Valores criptográficos aleatorios únicos se generan para cada sesión de guardado.
-3. **Derivación:** PBKDF2 se usa para transformar la contraseña en un CryptoKey de 256 bits.
-4. **Encriptación:** Los datos se transforman en un string JSON, se encriptan con AES-GCM, y se almacenan como un blob Base64 en un archivo local seguro en tu dispositivo.
+## Características
 
-## Stack Tecnológico
+- **Cifrado AES-256-GCM** con clave derivada por PBKDF2-SHA512 y 210.000
+  iteraciones.
+- **Generador criptográficamente seguro**: `crypto.getRandomValues`, muestreo
+  por rechazo (sin sesgo de módulo) y mezcla Fisher-Yates. Garantiza al menos un
+  carácter de cada clase habilitada.
+- **Auditoría local determinista**: fortaleza, reutilización, similitud,
+  patrones comunes, secuencias, duplicados y antigüedad. Sin modelos, sin API,
+  sin red.
+- **Recomendaciones por cuenta** mapeadas a NIST SP 800-63B, OWASP ASVS V2.1,
+  OWASP Top 10 A07 y CWE-521.
+- **Errores tipados del vault**: distingue contraseña incorrecta / datos
+  alterados, archivo dañado, versión no soportada y vault ausente.
+- **Resolución de conflictos** al importar vaults de otro dispositivo.
+- **Auto-bloqueo** tras 10 minutos de inactividad.
+- **Cinco idiomas**: inglés, español, portugués, francés y chino.
+- **Temas claro y oscuro**.
 
-- **Escritorio:** Electron + Next.js 15 (App Router), React 19, Tailwind CSS.
-- **Componentes UI:** Shadcn UI & Lucide Icons.
-- **Seguridad:** Web Crypto API (Nativo del sistema).
-- **Almacenamiento:** Archivo local encriptado (100% offline).
+## Stack
 
-## Cómo Empezar
+| Componente | Versión |
+|------------|---------|
+| Electron | 45.1.0 |
+| Next.js (export estático) | 16.4.3 |
+| React / React DOM | 19.3.1 |
+| TypeScript | 5.7 |
+| Tailwind CSS | 3.4 |
+| electron-builder | 26.18.0 |
+| Web Crypto API | nativa |
 
-### Escritorio (Desarrollo)
-1. Clona el repositorio.
-2. Instala las dependencias: `npm install`.
-3. Ejecuta el entorno de desarrollo: `npm run dev`.
-4. La aplicación se abrirá en una ventana de Electron (Next.js en el puerto 9002).
+Ni Next.js ni Electron publican versiones LTS formales. Las versiones indicadas
+son las últimas estables disponibles al 28 de octubre de 2026.
 
-> **Nota:** En desarrollo, la app usa Electron para simular el entorno de escritorio. En producción, usas el .exe portable o el instalador.
+## Requisitos
 
-### Builds de Escritorio (Windows)
-1. **Cierra** cualquier ventana de LocalPass o Electron que esté abierta (evita el error "Access is denied").
-2. `npm run build`
-3. En `dist/` tendrás:
-   - **LocalPass-Setup-1.0.0.exe** — instalador (NSIS).
-   - **LocalPass-1.0.0-portable.exe** — portable: un solo .exe, sin instalación, sin dependencias.
-4. Tras añadir nuevas funciones, vuelve a ejecutar `npm run build` para que el portable y el instalador incluyan los últimos cambios.
+- Node.js **22.12 o superior** (lo exige Electron 45; Next.js 16 pide 20.9+).
+- npm.
+- Windows x64 para generar el instalador y el portable.
+
+## Empezar
+
+```bash
+npm install
+npm run dev
+```
+
+`npm run dev` levanta Next.js en `http://localhost:9002` y abre Electron cuando
+el servidor responde.
+
+## Build de escritorio
+
+```bash
+npm run build
+```
+
+El comando ejecuta, en orden: build estático de Next.js, copia del icono y
+empaquetado con electron-builder. El resultado queda en `dist/`:
+
+- `LocalPass-Setup-1.1.0.exe` — instalador NSIS.
+- `LocalPass-1.1.0-portable.exe` — ejecutable portable.
+
+Cerrá cualquier instancia de LocalPass o Electron antes de compilar para evitar
+el error `Access is denied` al reemplazar archivos.
+
+## Comandos
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Desarrollo (Next.js + Electron) |
+| `npm run dev:next` | Solo el servidor de desarrollo |
+| `npm run build` | Build completo (Next.js + electron-builder) |
+| `npm run build:next` | Solo el export estático en `out/` |
+| `npm run build:electron` | Solo el empaquetado con electron-builder |
+| `npm run typecheck` | Verificación de tipos |
+| `npm test` | Tests unitarios (`node:test`) |
+
+## Estructura del proyecto
+
+```
+electron/main.js                 Proceso principal, CSP y protocolo app://
+src/app/                         Entrada de Next.js (App Router)
+src/components/vault/            UI del vault, generador y auditoría
+src/hooks/use-vault.tsx          Estado del vault y ciclo de vida
+src/lib/vault-storage.ts         Formato en disco, cifrado y validación
+src/lib/vault-errors.ts          Taxonomía de errores
+src/lib/vault-merge.ts           Reglas de importación y conflictos
+src/lib/password-generator.ts    Generación con CSPRNG
+src/lib/security-audit.ts        Motor de auditoría local
+src/lib/translations.ts          Traducciones (en, es, pt, fr, zh)
+public/fonts/                    Tipografías self-hosted
+tests/                           Tests de los módulos puros
+docs/                            Documentación
+```
+
+## Documentación
+
+- [docs/TECHNICAL.md](docs/TECHNICAL.md) — arquitectura, formato del vault y
+  módulos.
+- [docs/SECURITY.md](docs/SECURITY.md) — modelo de amenazas, criptografía,
+  mapeo a frameworks y límites conocidos.
+- [docs/USER_GUIDE.md](docs/USER_GUIDE.md) — guía de uso.
+- [docs/CHANGELOG.md](docs/CHANGELOG.md) — historial de cambios.
+
+## Nota de seguridad
+
+LocalPass no tiene mecanismo de recuperación de contraseña maestra. Si la
+olvidás, el contenido del vault es matemáticamente irrecuperable. Exportá el
+vault cifrado con regularidad y guardá el respaldo en un lugar seguro.
 
 ---
-**Nota de Seguridad:** LocalPass no tiene un mecanismo de "Recuperar Contraseña". Si olvidas tu Contraseña Maestra, tus datos son matemáticamente imposibles de recuperar. Respald a frecuentemente tus archivos .json vault encriptados.
+
+**Versión**: 1.1.0 · **Última actualización**: Octubre 2026

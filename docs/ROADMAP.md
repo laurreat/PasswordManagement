@@ -1,118 +1,87 @@
-# LocalPass - Roadmap
+# LocalPass — Roadmap
 
 ---
 
-## v1.0.0 - Actual (2026-04-22)
+## v1.1.0 — Actual (2026-10-28)
 
 ### Completado
 
-- [x] Aplicación de escritorio Electron
-- [x] Cifrado AES-256-GCM local
-- [x] CRUD de cuentas
-- [x] Generador de contraseñas
-- [x] Auditoría de seguridad con IA
-- [x] Importar/Exportar vault
-- [x] Resolución de conflictos
-- [x] Temas claro/oscuro
-- [x] Soporte multilingüe (ES/EN)
-- [x] Documentación completa
+- [x] Generador con CSPRNG y muestreo sin sesgo
+- [x] Errores tipados del vault y de la importación
+- [x] Auditoría local determinista con mapeo a frameworks
+- [x] Recomendaciones por cuenta (reutilización, similitud, patrones)
+- [x] Tipografías self-hosted
+- [x] CSP y aislamiento de Electron
+- [x] Eliminación de Genkit, Firebase y dependencias de nube
+- [x] Next.js 16.4.3, React 19.3.1, Electron 45.1.0
+- [x] Portugués, francés y chino
+- [x] Tests unitarios de los módulos puros
 
 ---
 
-## v1.1.0 - Corto Plazo
+## v1.2.0 — Corto plazo
 
-### Planeado
+### Producto
 
+- [ ] Autofill en aplicaciones de escritorio (sin red)
 - [ ] Atajos de teclado personalizables
-- [ ] Categorías para cuentas
-- [ ] Favoritos/marcadores
+- [ ] Categorías y favoritos
+- [ ] Búsqueda y filtros avanzados
 - [ ] Historial de contraseñas por cuenta
-- [ ] Búsqueda mejorada (filtros avanzados)
 
-### Mejoras UI/UX
+### Experiencia
 
-- [ ] Animaciones más fluidas
 - [ ] Indicadores de fortaleza en tiempo real
 - [ ] Tutorial interactivo para nuevos usuarios
-
----
-
-## v1.2.0 - Mediano Plazo
-
-### Seguridad
-
-- [ ] Alertas por email ante filtraciones conocidas
-- [ ] Verificación de 2FA para servicios
-- [ ] Notas seguras cifradas
+- [ ] Exportación de reporte de auditoría a PDF local
 
 ### Backup
 
-- [ ] Backup automático programable
-- [ ] Almacenamiento en carpeta configurable
-- [ ] Notificaciones de backup
-
-### Widgets
-
-- [ ] Widget de menú del sistema (system tray)
-- [ ] Menú rápido de acceso
-- [ ] Acceso al generador desde tray
+- [ ] Backup automático cifrado en una carpeta local configurable
+- [ ] Recordatorio de backup sin conexión
 
 ---
 
-## v2.0.0 - Largo Plazo
+## v2.0.0 — Largo plazo
 
-### Multi-Plataforma
+### Multiplataforma
 
 - [ ] Soporte macOS
 - [ ] Soporte Linux
 - [ ] Build portable para Linux
 
-### Sincronización
+### Portabilidad de datos
 
-- [ ] Sincronización WiFi local (dispositivos en misma red)
-- [ ] Importar vault desde QR code
-- [ ] Historial de sincronización
+- [ ] Importar vault desde QR (sin red)
+- [ ] Exportación cifrada entre dispositivos mediante archivo
+- [ ] Historial de importaciones
 
-### Extensiones
+### Acceso
 
-- [ ] API para extensiones de terceros
-- [ ] Integración con navegadores
-
----
-
-## v3.0.0 - Visión Futura
-
-### Avanzado
-
-- [ ] Biometría (huella, rostro)
-- [ ] Claves de acceso (WebAuthn/FIDO2)
-- [ ] Compartición segura de credenciales
-- [ ] Modo viaje (datos simulados)
-
-### Enterprise
-
-- [ ] Vault de equipo
-- [ ] Permisos por rol
-- [ ] Auditoría de acceso
+- [ ] Biometría local (huella/rostro) cuando el SO la exponga
+- [ ] Claves de acceso (WebAuthn/FIDO2) con verificación local
 
 ---
 
-## No Planeado (Por Ahora)
+## No planificado
 
-### Descartados
+- Sincronización cloud
+- Alertas por correo o SMS
+- Telemetría
+- Auditoría con servicios de IA remotos
+- Recuperación de contraseña maestra
+- Cualquier función que requiera una conexión de red
 
-- [~~] Sincronización cloud - Contrario al principio offline
-- [~~] Recuperación de contraseña - Comprometería seguridad
-- [~~] Telemetría - Contrario al principio privacy
+Estas exclusiones son parte del diseño: LocalPass no debe necesitar internet ni
+enviar datos a terceros.
 
 ---
 
 ## Notas
 
-Las prioridades pueden cambiar basándose en feedback de usuarios y evaluación de seguridad.
-
-Para sugerir features o votar por existentes, usa el tracker de Issues.
+Las prioridades pueden cambiar según feedback de usuarios y evaluación de
+seguridad. Las propuestas deben respetar el principio offline.
 
 ---
 
-**Última actualización**: Abril 2026
+**Última actualización**: Octubre 2026

@@ -8,14 +8,14 @@
 - Import/Export: Safely export and import encrypted vaults for backup and transfer between devices.
 - Account Management: Create, edit, and organize password entries with site, username, password, and notes fields.
 - Hybrid Merge: Intelligently resolve conflicts during vault import by comparing IDs and site/username combinations.
-- AI-Powered Security Audit: Use an LLM tool to periodically check passwords stored in the vault against lists of known breaches or common passwords and provide alerts.
+- AI-Powered Security Audit: Analyze passwords locally with deterministic rules for strength, reuse, similarity and common patterns, and map each finding to NIST, OWASP and CWE references. No model and no network call.
 
 ## Style Guidelines:
 
 - Primary color: Deep midnight blue (#2C3E50) evoking security and trust.
 - Background color: Light gray (#F0F4F8), providing a clean, neutral backdrop.
 - Accent color: Teal (#3498DB), offering contrast and highlighting interactive elements.
-- Font pairing: 'Inter' (sans-serif) for body text and 'Space Grotesk' (sans-serif) for headings. Space Grotesk adds some computerized feel. Note: currently only Google Fonts are supported.
+- Font pairing: 'Inter' (sans-serif) for body text and 'Space Grotesk' (sans-serif) for headings. Space Grotesk adds some computerized feel. Both fonts are self-hosted under public/fonts so the app makes no network request.
 - Use clean, minimalist icons to represent account types and actions.
 - Employ a clear, intuitive layout with easy-to-navigate sections for managing accounts and settings.
 - Incorporate subtle transitions and feedback animations for a smooth user experience.
