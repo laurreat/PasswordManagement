@@ -9,7 +9,7 @@ import {
   LogOut, Globe, User, Copy, ExternalLink,
   History, Info, AlertTriangle, Download, Upload,
   Cpu, Edit2, Check, X, Wand2, ShieldAlert, Zap,
-  Moon, Sun, Languages, Eye, EyeOff
+  Moon, Sun, Languages, Eye, EyeOff, FileSpreadsheet
 } from "lucide-react";
 import { 
   Sidebar, SidebarContent, SidebarHeader, SidebarMenu, 
@@ -27,6 +27,14 @@ import { toast } from "@/hooks/use-toast";
 import { toVaultErrorCode } from "@/lib/vault-errors";
 import { vaultErrorMessageKey } from "@/lib/vault-error-messages";
 import { auditVault } from "@/lib/security-audit";
+import {
+  applyCsvImport,
+  CsvImportError,
+  MAX_CSV_BYTES,
+  parseBrowserCsv,
+  previewCsvImport,
+} from "@/lib/browser-csv";
+import type { CsvParseResult, CsvImportErrorCode } from "@/lib/browser-csv";
 import { SecurityAudit } from "./security-audit";
 import { PasswordGenerator } from "./password-generator";
 import { ConflictResolver } from "./conflict-resolver";
@@ -34,6 +42,12 @@ import { Documentation } from "./documentation";
 import { Textarea } from "@/components/ui/textarea";
 
 type ViewMode = 'accounts' | 'conflicts' | 'generator' | 'audit' | 'settings' | 'documentation';
+
+const CSV_ERROR_MESSAGE_KEYS: Record<CsvImportErrorCode, string> = {
+  csv_empty: 'settings.csv_error_empty',
+  csv_unrecognized_format: 'settings.csv_error_unrecognized',
+  csv_too_large: 'settings.csv_error_too_large',
+};
 
 export function Dashboard() {
   const { vault, updateVault, lock, exportVault, importVault } = useVault();
@@ -51,6 +65,11 @@ export function Dashboard() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const importFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [csvFileName, setCsvFileName] = useState<string | null>(null);
+  const [csvParsed, setCsvParsed] = useState<CsvParseResult | null>(null);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Reset selection when view changes
@@ -74,9 +93,86 @@ export function Dashboard() {
     };
   }, [vault]);
 
+  const csvPreview = useMemo(
+    () => (vault && csvParsed ? previewCsvImport(vault, csvParsed.accounts) : null),
+    [vault, csvParsed]
+  );
+
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: t('form.copied'), description: `${label}` });
+  };
+
+  const resetCsvImport = () => {
+    setCsvFileName(null);
+    setCsvParsed(null);
+    if (csvFileInputRef.current) csvFileInputRef.current.value = "";
+  };
+
+  const handleCsvFile = async (file: File | null) => {
+    if (!file) return;
+
+    if (file.size > MAX_CSV_BYTES) {
+      toast({
+        variant: "destructive",
+        title: t('settings.csv_error_title'),
+        description: t('settings.csv_error_too_large'),
+      });
+      resetCsvImport();
+      return;
+    }
+
+    try {
+      const parsed = parseBrowserCsv(await file.text());
+      if (parsed.accounts.length === 0) {
+        toast({
+          variant: "destructive",
+          title: t('settings.csv_error_title'),
+          description: t('settings.csv_no_accounts'),
+        });
+        resetCsvImport();
+        return;
+      }
+      setCsvFileName(file.name);
+      setCsvParsed(parsed);
+    } catch (error: unknown) {
+      const code = error instanceof CsvImportError ? error.code : 'csv_unrecognized_format';
+      toast({
+        variant: "destructive",
+        title: t('settings.csv_error_title'),
+        description: t(CSV_ERROR_MESSAGE_KEYS[code]),
+      });
+      resetCsvImport();
+    }
+  };
+
+  const handleCsvImport = async () => {
+    if (!csvParsed) return;
+    setCsvImporting(true);
+    try {
+      await updateVault(v => applyCsvImport(v, csvParsed.accounts).vault);
+      const counts = csvPreview;
+      const summary = [
+        `${t('settings.csv_added')}: ${counts?.added ?? 0}`,
+        `${t('settings.csv_conflicts')}: ${counts?.conflicts ?? 0}`,
+        `${t('settings.csv_unchanged')}: ${counts?.unchanged ?? 0}`,
+      ].join(' · ');
+      toast({
+        title: t('settings.csv_done_title'),
+        description: counts && counts.conflicts > 0
+          ? `${summary}. ${t('settings.csv_conflicts_hint')}`
+          : summary,
+      });
+      resetCsvImport();
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: t('settings.csv_error_title'),
+        description: t(vaultErrorMessageKey(toVaultErrorCode(error, 'vault_write_failed'))),
+      });
+    } finally {
+      setCsvImporting(false);
+    }
   };
 
   const handleSaveAccount = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -494,6 +590,92 @@ export function Dashboard() {
                             </DialogFooter>
                           </DialogContent>
                         </Dialog>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6 space-y-4">
+                        <h3 className="font-bold text-lg flex items-center gap-2">
+                          <FileSpreadsheet className="w-5 h-5" /> {t('settings.csv_title')}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{t('settings.csv_desc')}</p>
+
+                        <input
+                          ref={csvFileInputRef}
+                          type="file"
+                          accept=".csv,text/csv"
+                          className="hidden"
+                          title={t('settings.csv_select_file')}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            void handleCsvFile(e.target.files?.[0] ?? null);
+                            e.target.value = "";
+                          }}
+                        />
+
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="flex-1 gap-2"
+                            onClick={() => csvFileInputRef.current?.click()}
+                          >
+                            <FileSpreadsheet className="w-4 h-4" />
+                            <span className="truncate">{csvFileName ?? t('settings.csv_select_file')}</span>
+                          </Button>
+                          {csvFileName && (
+                            <Button type="button" variant="ghost" size="icon" onClick={resetCsvImport}>
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+
+                        {csvParsed && csvPreview && (
+                          <div className="space-y-3 rounded-lg border p-4">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>{t('settings.csv_format')}</span>
+                              <Badge variant="secondary" className="uppercase">{csvParsed.format}</Badge>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">{t('settings.csv_added')}</span>
+                                <strong>{csvPreview.added}</strong>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">{t('settings.csv_conflicts')}</span>
+                                <strong>{csvPreview.conflicts}</strong>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">{t('settings.csv_unchanged')}</span>
+                                <strong>{csvPreview.unchanged}</strong>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">{t('settings.csv_skipped')}</span>
+                                <strong>{csvParsed.skipped.length}</strong>
+                              </div>
+                              {csvParsed.duplicates > 0 && (
+                                <div className="col-span-2 flex justify-between">
+                                  <span className="text-muted-foreground">{t('settings.csv_duplicates')}</span>
+                                  <strong>{csvParsed.duplicates}</strong>
+                                </div>
+                              )}
+                            </div>
+
+                            <p className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
+                              <AlertTriangle className="w-4 h-4 shrink-0" />
+                              <span>{t('settings.csv_warning')}</span>
+                            </p>
+
+                            <Button
+                              className="w-full gap-2"
+                              disabled={csvImporting || csvPreview.added + csvPreview.conflicts === 0}
+                              onClick={handleCsvImport}
+                            >
+                              <Upload className="w-4 h-4" />
+                              {csvImporting ? t('app.encrypting') : t('settings.csv_do')}
+                            </Button>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
 
