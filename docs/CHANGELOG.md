@@ -22,6 +22,9 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - **Auditoría**: reemplazo del flujo Genkit por un motor local determinista con
   análisis por cuenta y entre cuentas, puntaje 0–100, severidad y mapeo a
   NIST SP 800-63B, OWASP ASVS V2.1, OWASP Top 10 A07 y CWE-521.
+- **Auditoría navegable**: búsqueda por sitio, correo o usuario; tarjetas
+  plegables de forma individual o masiva; contraseña enmascarada con
+  revelar/copiar y hallazgos visibles sólo al expandir.
 - **Tipografías**: Inter y Space Grotesk se sirven desde `public/fonts`; se
   eliminó la carga desde Google Fonts.
 - **Electron**: `main.js` reescrito con CSP, cabeceras de seguridad, sandbox,
@@ -42,8 +45,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - `src/lib/security-audit.ts`: motor de auditoría local.
 - `src/components/vault/security-audit.tsx`: UI de auditoría con filtros,
   puntaje y recomendaciones por cuenta.
-- `tests/`: 72 tests con `node:test` para generador, vault, merge, auditoría,
-  importación de CSV y paridad de traducciones.
+- **Corrección desde la auditoría**: cada cuenta con hallazgos de contraseña
+  ofrece "Corregir". El diálogo genera un candidato CSPRNG, lo re-audita contra
+  el vault completo, bloquea el guardado mientras queden hallazgos y conserva la
+  contraseña anterior en el historial. Nunca escribe sin confirmación.
+- `src/lib/audit-remediation.ts` y `tests/audit-remediation.test.ts`: motor de
+  corrección con 13 tests.
+- `tests/`: 85 tests con `node:test` para generador, vault, merge, auditoría,
+  corrección de contraseñas, importación de CSV y paridad de traducciones.
 - Script `npm test`.
 - **Importación de CSV del navegador**: lee Chrome/Edge/Brave, Firefox,
   Bitwarden y LastPass en una sola operación, normaliza las URLs, muestra un

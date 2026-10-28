@@ -97,6 +97,7 @@ PasswordManagement/
 │       ├── browser-csv.ts         Importación de CSV del navegador
 │       ├── password-generator.ts  Generación con CSPRNG
 │       ├── security-audit.ts      Motor de auditoría
+│       ├── audit-remediation.ts   Corrección de contraseñas desde la auditoría
 │       ├── types.ts               Tipos del dominio
 │       ├── translations.ts        en / es / pt / fr / zh
 │       └── utils.ts               `cn`
@@ -249,6 +250,34 @@ estimateEntropyBits(password: string): number
 arePasswordsSimilar(first: string, second: string): boolean
 ```
 
+### `src/lib/audit-remediation.ts`
+
+Convierte un hallazgo en un cambio concreto sin escribir nada por su cuenta. El
+módulo no conoce React ni el vault cifrado: recibe cuentas y devuelve datos.
+
+```typescript
+isAdvisoryIssue(code: AuditIssueCode): boolean
+remediationIssues(audit: AccountAudit): AuditIssueCode[]
+advisoryIssues(audit: AccountAudit): AuditIssueCode[]
+remainingFindingCodes(account, candidate, otherPasswords): AuditIssueCode[]
+generateRemediationPassword(account, otherPasswords): string
+applyPasswordRemediation(vault, accountId, newPassword, now?): VaultDecrypted
+```
+
+Reglas:
+
+- `password_stale` y `account_duplicate` son informativos/estructurales y no se
+  corrigen con una contraseña nueva; el diálogo los muestra, pero no ofrece
+  corregirlos.
+- El candidato se genera con `generatePassword` (20 caracteres, todas las
+  clases) y se vuelve a auditar contra **todo** el vault, incluida
+  reutilización y similitud, antes de ofrecerlo.
+- `remainingFindingCodes` ignora los hallazgos `info`; el botón de guardar sigue
+  deshabilitado mientras quede cualquier otro.
+- `applyPasswordRemediation` sólo cambia `password` y `updatedAt`, y antepone la
+  contraseña anterior con su fecha original a `history`. No toca el formato del
+  vault.
+
 ---
 
 ## Formato del vault
@@ -366,6 +395,17 @@ severidad y hallazgos. El puntaje del vault es el promedio de sus cuentas.
   configuración y documentación.
 - La auditoría se recalcula en memoria con `useMemo` sobre el vault; no hay
   botón "ejecutar" ni llamada externa.
+- La auditoría tiene búsqueda propia por sitio, correo o usuario
+  (substring sin distinguir mayúsculas) que se combina con los filtros de
+  severidad. Las tarjetas se abren y cierran individualmente, y el control
+  "Expandir/Contraer todo" actúa sólo sobre los resultados visibles.
+- Una tarjeta plegada muestra sitio, usuario, puntaje y severidad. Expandida
+  agrega la contraseña enmascarada con revelar/copiar, notas, última
+  actualización y los hallazgos con su recomendación.
+- Cada cuenta con hallazgos de contraseña ofrece "Corregir": abre un diálogo
+  que genera un candidato CSPRNG, permite editarlo, revelarlo, copiarlo o
+  regenerarlo, lo re-audita en vivo y sólo escribe al confirmar. El diálogo
+  advierte que LocalPass no puede cambiar la contraseña en el sitio remoto.
 - La configuración incluye la importación de CSV del navegador: se elige el
   archivo, se muestra un resumen (nuevas, conflictos, ya actualizadas, omitidas)
   y se confirma la importación. El CSV no está cifrado, así que la tarjeta pide
@@ -428,7 +468,8 @@ directamente (Node 22+ hace type stripping) y por eso `tsconfig.json` habilita
 para que los archivos de test se interpreten como ESM sin warnings.
 
 Cobertura actual: generador, formato/cifrado del vault, reglas de merge, motor
-de auditoría, importación de CSV y paridad de traducciones (72 tests).
+de auditoría, corrección de contraseñas desde la auditoría, importación de CSV
+y paridad de traducciones (85 tests).
 
 ---
 
@@ -447,6 +488,10 @@ de auditoría, importación de CSV y paridad de traducciones (72 tests).
   eliminarlo.
 - Bitwarden incluye notas, tarjetas e identidades en el mismo export: sólo se
   importan los ítems de tipo `login`, porque LocalPass modela credenciales.
+- "Corregir" en la auditoría sólo actualiza el vault: LocalPass no tiene red y
+  no puede rotar la contraseña en el sitio remoto. El diálogo lo advierte.
+- Un candidato se compara contra las contraseñas guardadas en este vault; una
+  reutilización en un sitio que no está registrado aquí no se puede detectar.
 - El renderer usa `script-src 'unsafe-inline'` porque el export estático de
   Next.js emite payloads de hidratación inline. Ver `docs/SECURITY.md`.
 
