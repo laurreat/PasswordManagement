@@ -41,19 +41,23 @@ migraron porque son cambios mayores ajenos a este alcance.
 │  · ventana BrowserWindow                     │
 │  · protocolo app:// y cabeceras de seguridad │
 │  · guardas de navegación y permisos          │
+│  · IPC acotado + escritura atómica en disco  │
 └──────────────────────┬───────────────────────┘
                        │ carga local
 ┌──────────────────────▼───────────────────────┐
 │ Renderer (export estático de Next.js)        │
 │  · React + estado del vault                  │
 │  · Web Crypto (PBKDF2, AES-GCM)              │
-│  · localStorage (vault cifrado)              │
+│  · `vault.enc.json` a través del puente      │
 └──────────────────────────────────────────────┘
 ```
 
-No existe `preload.js`, no hay `ipcMain`/`ipcRenderer` y no se expone ninguna
-API de Node al renderer. El renderer corre con `sandbox: true`,
-`contextIsolation: true`, `nodeIntegration: false` y `webviewTag: false`.
+`electron/preload.js` expone `window.localpass` con un conjunto fijo de canales:
+`vault.*`, `sync.*`, `clipboard.copyTemp` y `app.info`. El renderer nunca manda
+rutas: el proceso principal las deriva de `app.getPath('userData')` y de la
+carpeta de sync que el usuario elige con un diálogo nativo. El renderer corre con
+`sandbox: true`, `contextIsolation: true`, `nodeIntegration: false` y
+`webviewTag: false`.
 
 En desarrollo (`app.isPackaged === false`) la ventana carga
 `http://localhost:9002` y abre DevTools. En producción carga
@@ -336,9 +340,16 @@ de un `false` genérico.
 
 ### Ubicación en disco
 
-El sobre cifrado se guarda en `localStorage`, bajo la clave `localpass_vault`,
-dentro del perfil de Electron (`%APPDATA%\LocalPass` en Windows). No se escribe
+El sobre cifrado se guarda en `vault.enc.json`, dentro de
+`app.getPath('userData')` (`%APPDATA%\LocalPass` en Windows). La escritura es
+atómica: temporal en el mismo directorio, `fsync` y `rename`, así un corte de
+luz deja el archivo anterior intacto o ninguno, nunca medio vault. No se escribe
 ningún archivo de vault legible en claro.
+
+En el build web (sin puente) el mismo sobre se guarda en `localStorage`, bajo la
+clave `localpass_vault`. Un vault existente ahí se migra al archivo en la
+primera lectura, una sola vez, y la copia vieja se conserva como red de
+seguridad.
 
 ---
 
@@ -350,7 +361,8 @@ ningún archivo de vault legible en claro.
 | `vault_corrupted` | El sobre o el contenido descifrado no tiene la forma esperada |
 | `vault_authentication_failed` | Contraseña incorrecta **o** datos alterados (GCM no distingue) |
 | `vault_unsupported_version` | `vaultVersion` distinto de `1.0` |
-| `vault_write_failed` | `localStorage` rechazó la escritura (cuota o modo restringido) |
+| `vault_read_failed` | El archivo del vault no se pudo leer |
+| `vault_write_failed` | El archivo no se pudo escribir (permisos, disco lleno o cuota de `localStorage`) |
 | `backup_corrupted` | El archivo importado no es un backup válido |
 | `backup_authentication_failed` | Contraseña incorrecta o backup alterado |
 | `backup_unsupported_version` | El backup usa otra versión de formato |

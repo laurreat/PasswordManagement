@@ -62,7 +62,7 @@ almacena ni se transmite. Si se olvida, el vault es irrecuperable por diseño.
 | Amenaza | Mitigación |
 |---------|------------|
 | Robo del archivo o del disco | AES-256-GCM con clave derivada por PBKDF2-SHA512 (210k iteraciones) |
-| Copia del perfil de Electron | El vault en `localStorage` está cifrado; sin la contraseña maestra no es legible |
+| Copia del perfil de Electron | El vault es un archivo cifrado; sin la contraseña maestra no es legible |
 | Fuga de un backup exportado | El backup también está cifrado con la contraseña maestra |
 | Contraseñas débiles, repetidas o predecibles | Generador CSPRNG y auditoría local |
 | Contenido remoto malicioso | No se carga contenido remoto; CSP y navegación bloqueadas |
@@ -146,24 +146,29 @@ dice así en lugar de mentir con un "contraseña incorrecta" genérico.
 
 | Aspecto | Implementación |
 |---------|----------------|
-| Ubicación | `localStorage`, clave `localpass_vault`, perfil de Electron (`%APPDATA%\LocalPass`) |
+| Ubicación | Archivo `vault.enc.json` en `app.getPath('userData')` (`%APPDATA%\LocalPass`) |
+| Escritura | Temporal en el mismo directorio + `fsync` + `rename`; nunca se escribe sobre el archivo bueno |
 | Formato | JSON con `salt`, `iv`, `data` y `vaultVersion` |
 | Contenido en claro | Nunca se escribe en disco |
 | Backups | Archivo JSON cifrado que el usuario exporta manualmente |
-| Borrado | `resetVault` elimina la clave de `localStorage` |
+| Borrado | `resetVault` elimina el archivo |
+| Permisos | `0600` al crear el archivo; en Windows hereda los del perfil |
 
 Advertencias honestas:
 
-- El sistema operativo protege el perfil con los permisos de la cuenta de
-  Windows. LocalPass no agrega permisos POSIX/ACL propios.
-- `localStorage` vive en LevelDB. Borrar la clave elimina el registro lógico,
-  pero bloques liberados del disco podrían conservar bytes cifrados. Para un
-  borrado físico hace falta cifrado de disco completo o saneamiento del disco.
+- El sistema operativo protege el perfil con los permisos de la cuenta.
+  LocalPass no agrega ACL propias.
+- El reemplazo de un archivo no borra los bytes anteriores: bloques liberados
+  del disco podrían conservar sobres cifrados. Para un borrado físico hace
+  falta cifrado de disco completo o saneamiento del disco.
+- En Android el archivo vive en el almacenamiento privado de la app; la carpeta
+  de sync la elige el usuario y sólo contiene logs cifrados.
 - Se recomienda BitLocker (o equivalente) en el equipo.
 
 ### 4.1 Sincronización local (v1.3.0)
 
-Diseño aprobado, todavía no implementado.
+Diseño aprobado. Dominio de cambios y almacenamiento en archivo implementados
+(Fases 1–2); el motor de sync y su interfaz llegan en la Fase 3.
 
 | Aspecto | Implementación |
 |---------|----------------|
