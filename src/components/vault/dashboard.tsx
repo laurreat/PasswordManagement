@@ -478,8 +478,8 @@ export function Dashboard() {
                           <Download className="w-5 h-5" /> {t('settings.export_title')}
                         </h3>
                         <p className="text-sm text-muted-foreground">{t('settings.export_desc')}</p>
-                        <Button variant="outline" className="w-full gap-2" onClick={() => {
-                          const data = exportVault();
+                        <Button variant="outline" className="w-full gap-2" onClick={async () => {
+                          const data = await exportVault();
                           if (!data) {
                             toast({ variant: "destructive", title: t('app.error_vault_missing') });
                             return;

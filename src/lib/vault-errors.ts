@@ -12,6 +12,7 @@ export type VaultErrorCode =
   | 'vault_corrupted'
   | 'vault_authentication_failed'
   | 'vault_unsupported_version'
+  | 'vault_read_failed'
   | 'vault_write_failed'
   | 'backup_corrupted'
   | 'backup_authentication_failed'

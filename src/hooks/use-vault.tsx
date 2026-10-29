@@ -1,9 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { AccountEntry, ConflictEntry, VaultDecrypted } from '@/lib/types';
-import { decryptVaultFile, encryptVault, buildExportPackage, emptyVault, parseVaultEnvelope, VAULT_STORAGE_KEY } from '@/lib/vault-storage';
-import { VaultError, toVaultErrorCode, type VaultErrorCode } from '@/lib/vault-errors';
+import { decryptVaultFile, encryptVault, buildExportPackage, emptyVault, parseVaultEnvelope } from '@/lib/vault-storage';
+import { toVaultErrorCode, type VaultErrorCode } from '@/lib/vault-errors';
+import { createVaultStore, type VaultStore } from '@/lib/vault-store';
 import { dedupeAccounts, mergeImportedVault } from '@/lib/vault-merge';
 import { toast } from '@/hooks/use-toast';
 import { useUISettings } from '@/hooks/use-ui-settings';
@@ -15,42 +16,59 @@ export type UnlockResult =
 interface VaultContextType {
   isLocked: boolean;
   isInitialized: boolean;
+  /** True while the stored envelope is being located; the UI must wait. */
+  isLoading: boolean;
   vault: VaultDecrypted | null;
   unlock: (password: string) => Promise<UnlockResult>;
   lock: () => void;
-  resetVault: () => void;
+  resetVault: () => Promise<void>;
   initialize: (password: string) => Promise<void>;
   updateVault: (updater: (v: VaultDecrypted) => VaultDecrypted) => Promise<void>;
   saveVault: (decrypted: VaultDecrypted, password: string) => Promise<void>;
   importVault: (fileContent: string, password: string) => Promise<void>;
-  exportVault: () => string;
+  exportVault: () => Promise<string>;
 }
 
 const VaultContext = createContext<VaultContextType | null>(null);
 
 const AUTO_LOCK_MINUTES = 10;
 
-function writeStoredVault(payload: string): void {
-  try {
-    localStorage.setItem(VAULT_STORAGE_KEY, payload);
-  } catch {
-    throw new VaultError('vault_write_failed');
-  }
-}
-
 export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useUISettings();
   const [vault, setVault] = useState<VaultDecrypted | null>(null);
   const [isLocked, setIsLocked] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [masterPassword, setMasterPassword] = useState<string | null>(null);
+  const storeRef = useRef<VaultStore | null>(null);
+
+  // Created lazily: the store needs `window`, which does not exist while the
+  // static export is being server-rendered.
+  const store = useCallback((): VaultStore => {
+    if (!storeRef.current) storeRef.current = createVaultStore();
+    return storeRef.current;
+  }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem(VAULT_STORAGE_KEY);
-    // A damaged vault still counts as initialized: sending the user to setup
-    // would invite them to overwrite the file they may be able to recover.
-    setIsInitialized(Boolean(saved));
-  }, []);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const saved = await store().read();
+        if (!cancelled) setIsInitialized(Boolean(saved));
+      } catch {
+        // We could not prove there is no vault. Sending the user to setup
+        // would invite them to overwrite a file that may still be readable.
+        if (!cancelled) setIsInitialized(true);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [store]);
 
   const lock = useCallback(() => {
     setVault(null);
@@ -58,13 +76,19 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsLocked(true);
   }, []);
 
-  const resetVault = useCallback(() => {
-    localStorage.removeItem(VAULT_STORAGE_KEY);
+  const resetVault = useCallback(async () => {
+    try {
+      await store().remove();
+    } catch {
+      // The in-memory vault is gone either way. A failed delete surfaces on
+      // the next unlock instead of pretending the data is gone.
+    }
+
     setVault(null);
     setMasterPassword(null);
     setIsLocked(true);
     setIsInitialized(false);
-  }, []);
+  }, [store]);
 
   useEffect(() => {
     if (isLocked) return;
@@ -92,7 +116,14 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [isLocked, lock, t]);
 
   const unlock = async (password: string): Promise<UnlockResult> => {
-    const saved = localStorage.getItem(VAULT_STORAGE_KEY);
+    let saved: string | null;
+
+    try {
+      saved = await store().read();
+    } catch (error) {
+      return { ok: false, code: toVaultErrorCode(error, 'vault_read_failed') };
+    }
+
     if (!saved) return { ok: false, code: 'vault_missing' };
 
     try {
@@ -111,7 +142,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const saveVault = async (decrypted: VaultDecrypted, password: string) => {
     decrypted.updatedAt = new Date().toISOString();
     const encrypted = await encryptVault(decrypted, password);
-    writeStoredVault(JSON.stringify(encrypted));
+    await store().write(JSON.stringify(encrypted));
     setVault({ ...decrypted });
     setIsInitialized(true);
   };
@@ -132,9 +163,18 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await saveVault({ ...updated, accounts, conflicts }, masterPassword);
   };
 
-  const exportVault = (): string => {
-    const saved = localStorage.getItem(VAULT_STORAGE_KEY);
-    if (!saved || !vault) return '';
+  const exportVault = async (): Promise<string> => {
+    if (!vault) return '';
+
+    let saved: string | null;
+
+    try {
+      saved = await store().read();
+    } catch {
+      return '';
+    }
+
+    if (!saved) return '';
 
     const envelope = parseVaultEnvelope(saved, 'stored');
     return JSON.stringify(buildExportPackage(vault, envelope), null, 2);
@@ -165,7 +205,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <VaultContext.Provider value={{
-      isLocked, isInitialized, vault, unlock, lock, resetVault, initialize, updateVault, saveVault, importVault, exportVault
+      isLocked, isInitialized, isLoading, vault, unlock, lock, resetVault, initialize, updateVault, saveVault, importVault, exportVault
     }}>
       {children}
     </VaultContext.Provider>

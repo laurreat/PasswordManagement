@@ -7,14 +7,14 @@ import { Dashboard } from "@/components/vault/dashboard";
 import { useEffect, useState } from "react";
 
 function VaultOrchestrator() {
-  const { isLocked, isInitialized } = useVault();
+  const { isLocked, isInitialized, isLoading } = useVault();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  if (!isClient) return null;
+  if (!isClient || isLoading) return null;
 
   if (!isInitialized) {
     return <SetupVault />;
