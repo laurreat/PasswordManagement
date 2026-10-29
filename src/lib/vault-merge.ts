@@ -128,15 +128,26 @@ export function applyConflictResolution(
   const conflict = vault.conflicts.find((entry) => entry.conflictId === conflictId);
   if (!conflict) return vault;
 
-  const resolved = selection === 'local' ? conflict.versionLocal : conflict.versionImportada;
+  const chosen = selection === 'local' ? conflict.versionLocal : conflict.versionImportada;
   const key = conflictKey(conflict);
   const index = vault.accounts.findIndex((account) => accountKey(account) === key);
 
+  const baseRevision = Math.max(
+    conflict.versionLocal.revision ?? 0,
+    conflict.versionImportada.revision ?? 0,
+    index >= 0 ? (vault.accounts[index].revision ?? 0) : 0
+  );
+
+  const resolved: AccountEntry = {
+    ...chosen,
+    revision: baseRevision + 1,
+  };
+
   const accounts = [...vault.accounts];
   if (index >= 0) {
-    accounts[index] = { ...resolved };
+    accounts[index] = resolved;
   } else {
-    accounts.push({ ...resolved });
+    accounts.push(resolved);
   }
 
   return {
