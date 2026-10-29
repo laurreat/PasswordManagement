@@ -11,7 +11,7 @@
  *      conflict and the user decides.
  */
 
-import type { AccountEntry, VaultDecrypted } from '@/lib/types';
+import type { AccountEntry, VaultDecrypted, VaultDraft } from '@/lib/types';
 import { applyChange, applyChangeLog, baselineAccounts } from './apply.ts';
 import { appendEntry, createBaseline, createChangeEntry, nextSeq } from './changes.ts';
 import { SyncError } from './errors.ts';
@@ -69,6 +69,32 @@ export function stageChange(
     log: appendEntry(log, entry),
     entry,
     vault: applied.vault,
+  };
+}
+
+/**
+ * Commits a local draft into the vault and appends it to the device log.
+ * The committed draft is removed from `vault.drafts`.
+ */
+export function commitDraft(
+  log: ChangeLogFile,
+  vault: VaultDecrypted,
+  draft: VaultDraft
+): StagedChange {
+  const staged = stageChange(log, vault, {
+    type: draft.type,
+    before: draft.before,
+    after: draft.after,
+    createdAt: draft.createdAt,
+  });
+
+  const remainingDrafts = (vault.drafts ?? []).filter((d) => d.draftId !== draft.draftId);
+  return {
+    ...staged,
+    vault: {
+      ...staged.vault,
+      drafts: remainingDrafts,
+    },
   };
 }
 

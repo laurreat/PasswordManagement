@@ -37,6 +37,19 @@ export type ConflictEntry = {
   detectedAt: string;
 };
 
+export type DraftType = 'create' | 'update' | 'delete';
+
+export type VaultDraft = {
+  draftId: string;
+  type: DraftType;
+  accountId: string;
+  accountKey: string;
+  before: AccountEntry | null;
+  after: AccountEntry | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type VaultDecrypted = {
   vaultVersion: "1.0";
   deviceId: string;
@@ -44,6 +57,7 @@ export type VaultDecrypted = {
   updatedAt: string;
   accounts: AccountEntry[];
   conflicts: ConflictEntry[];
+  drafts?: VaultDraft[];
   /** Device-local sync bookkeeping. Never shared with peers. */
   sync?: VaultSyncState;
 };
