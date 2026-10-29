@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "concurrently -k \"npm run dev:next\" \"npm run dev:electron\"",
     "dev:next": "next dev -p 9002",
-    "dev:electron": "wait-on http://localhost:9002 && electron .",
+    "dev:electron": "wait-on http://localhost:9002 && node -e \"delete process.env.ELECTRON_RUN_AS_NODE; const { spawn } = require('child_process'); const p = spawn(require('electron'), ['.'], { stdio: 'inherit', env: process.env }); p.on('exit', c => process.exit(c));\"",
     "copy:icon": "node -e \"const fs=require('fs');const p=require('path');['icon.svg','icon.png'].forEach(f=>{const src=p.join('public',f);const dst=p.join('out',f);if(fs.existsSync(src))fs.copyFileSync(src,dst);})\"",
     "build": "run-s build:next copy:icon build:electron",
     "build:next": "next build",
