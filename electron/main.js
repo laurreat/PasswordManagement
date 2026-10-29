@@ -1,6 +1,17 @@
-const { app, BrowserWindow, protocol, Menu, nativeImage, session } = require('electron');
+const {
+  app,
+  BrowserWindow,
+  protocol,
+  Menu,
+  nativeImage,
+  session,
+  ipcMain,
+  dialog,
+  clipboard,
+} = require('electron');
 const path = require('path');
 const fs = require('fs');
+const storage = require('./storage');
 
 let mainWindow = null;
 
@@ -136,6 +147,184 @@ function hardenWebContents(contents) {
   contents.on('will-attach-webview', (event) => event.preventDefault());
 }
 
+const CLIPBOARD_MIN_TTL_MS = 5_000;
+const CLIPBOARD_MAX_TTL_MS = 120_000;
+const CLIPBOARD_DEFAULT_TTL_MS = 30_000;
+const MAX_CLIPBOARD_BYTES = 64 * 1024;
+const MAX_DIALOG_TITLE = 120;
+
+/** Every handler answers with an explicit envelope, never a raw stack. */
+function ok(value) {
+  return { ok: true, value };
+}
+
+function fail(code) {
+  return { ok: false, code };
+}
+
+function failure(error, fallback) {
+  return fail(error && typeof error.code === 'string' ? error.code : fallback);
+}
+
+function dataDir() {
+  return app.getPath('userData');
+}
+
+function currentSyncFolder() {
+  return storage.readSettings(dataDir()).syncFolder;
+}
+
+let clipboardTimer = null;
+
+/**
+ * Copies a secret and clears it after a delay, but only while it is still
+ * ours: if the user copied something else in the meantime, wiping the
+ * clipboard would destroy their data.
+ */
+function copyTemporarily(text, requestedTtl) {
+  if (typeof text !== 'string' || text.length === 0) {
+    throw new storage.StorageError('invalid_argument');
+  }
+  if (Buffer.byteLength(text, 'utf8') > MAX_CLIPBOARD_BYTES) {
+    throw new storage.StorageError('invalid_argument');
+  }
+
+  const ttl = Number.isFinite(requestedTtl)
+    ? Math.min(Math.max(Math.trunc(requestedTtl), CLIPBOARD_MIN_TTL_MS), CLIPBOARD_MAX_TTL_MS)
+    : CLIPBOARD_DEFAULT_TTL_MS;
+
+  clipboard.writeText(text);
+
+  if (clipboardTimer) clearTimeout(clipboardTimer);
+  clipboardTimer = setTimeout(() => {
+    clipboardTimer = null;
+    if (clipboard.readText() === text) clipboard.clear();
+  }, ttl);
+  if (typeof clipboardTimer.unref === 'function') clipboardTimer.unref();
+
+  return { clearedInMs: ttl };
+}
+
+/**
+ * Paths live only here. The renderer sends a payload and, at most, a device
+ * id that must match the fixed file-name pattern.
+ */
+function registerIpc() {
+  ipcMain.handle('app:info', () =>
+    ok({ version: app.getVersion(), platform: process.platform, dataDir: dataDir() })
+  );
+
+  ipcMain.handle('vault:read', () => {
+    try {
+      return ok(storage.readFileIfExists(storage.vaultPath(dataDir())));
+    } catch (error) {
+      return failure(error, 'read_failed');
+    }
+  });
+
+  ipcMain.handle('vault:write', (_event, payload) => {
+    try {
+      storage.writeFileAtomic(storage.vaultPath(dataDir()), storage.assertPayload(payload));
+      return ok(true);
+    } catch (error) {
+      return failure(error, 'write_failed');
+    }
+  });
+
+  ipcMain.handle('vault:remove', () => {
+    try {
+      storage.removeFile(storage.vaultPath(dataDir()));
+      return ok(true);
+    } catch (error) {
+      return failure(error, 'write_failed');
+    }
+  });
+
+  ipcMain.handle('sync:status', () => {
+    try {
+      return ok({ folder: currentSyncFolder() });
+    } catch (error) {
+      return failure(error, 'read_failed');
+    }
+  });
+
+  ipcMain.handle('sync:choose-folder', async (event, requestedTitle) => {
+    try {
+      const folder = currentSyncFolder();
+      const options = {
+        title:
+          typeof requestedTitle === 'string' && requestedTitle.length <= MAX_DIALOG_TITLE
+            ? requestedTitle
+            : 'LocalPass',
+        properties: ['openDirectory', 'createDirectory'],
+      };
+      if (folder) options.defaultPath = folder;
+
+      const owner = BrowserWindow.fromWebContents(event.sender);
+      const result = owner
+        ? await dialog.showOpenDialog(owner, options)
+        : await dialog.showOpenDialog(options);
+
+      if (result.canceled || result.filePaths.length === 0) return ok({ folder });
+
+      const chosen = result.filePaths[0];
+      storage.writeSettings(dataDir(), { syncFolder: chosen });
+      return ok({ folder: chosen });
+    } catch (error) {
+      return failure(error, 'write_failed');
+    }
+  });
+
+  ipcMain.handle('sync:list', () => {
+    try {
+      const folder = currentSyncFolder();
+      return ok(folder ? storage.listChangeLogs(folder) : []);
+    } catch (error) {
+      return failure(error, 'read_failed');
+    }
+  });
+
+  ipcMain.handle('sync:read', (_event, deviceId) => {
+    try {
+      const folder = currentSyncFolder();
+      if (!folder) return fail('no_sync_folder');
+      return ok(storage.readFileIfExists(storage.syncLogPath(folder, deviceId)));
+    } catch (error) {
+      return failure(error, 'read_failed');
+    }
+  });
+
+  ipcMain.handle('sync:write', (_event, deviceId, payload) => {
+    try {
+      const folder = currentSyncFolder();
+      if (!folder) return fail('no_sync_folder');
+      storage.writeFileAtomic(storage.syncLogPath(folder, deviceId), storage.assertPayload(payload));
+      return ok(true);
+    } catch (error) {
+      return failure(error, 'write_failed');
+    }
+  });
+
+  ipcMain.handle('sync:remove', (_event, deviceId) => {
+    try {
+      const folder = currentSyncFolder();
+      if (!folder) return fail('no_sync_folder');
+      storage.removeFile(storage.syncLogPath(folder, deviceId));
+      return ok(true);
+    } catch (error) {
+      return failure(error, 'write_failed');
+    }
+  });
+
+  ipcMain.handle('clipboard:copy-temp', (_event, text, ttlMs) => {
+    try {
+      return ok(copyTemporarily(text, ttlMs));
+    } catch (error) {
+      return failure(error, 'write_failed');
+    }
+  });
+}
+
 function createWindow() {
   const windowIcon = getIcon();
 
@@ -146,6 +335,7 @@ function createWindow() {
     minHeight: 600,
     title: 'LocalPass',
     webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
@@ -223,6 +413,7 @@ app.whenReady().then(() => {
   // accelerators that a local-only application does not need.
   if (!isDev) Menu.setApplicationMenu(null);
   hardenSession();
+  registerIpc();
   createWindow();
 });
 
