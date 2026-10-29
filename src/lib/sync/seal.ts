@@ -36,6 +36,36 @@ export async function sealChangeLog(log: ChangeLogFile, password: string): Promi
   };
 }
 
+/**
+ * Validates the envelope a peer file contains before it is handed to the
+ * cipher. A file that is not an envelope at all must not be reported as a
+ * wrong password.
+ */
+export function parseChangeLogEnvelope(raw: string): VaultEncryptedFile {
+  const text = raw.trim().replace(/^\uFEFF/, '');
+  if (!text) throw new SyncError('sync_corrupted');
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new SyncError('sync_corrupted');
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new SyncError('sync_corrupted');
+  }
+
+  const { salt, iv, data, vaultVersion } = parsed as Record<string, unknown>;
+
+  if (typeof salt !== 'string' || typeof iv !== 'string' || typeof data !== 'string') {
+    throw new SyncError('sync_corrupted');
+  }
+  if (vaultVersion !== SYNC_FORMAT_VERSION) throw new SyncError('sync_unsupported_version');
+
+  return { salt, iv, data, vaultVersion: SYNC_FORMAT_VERSION };
+}
+
 export async function openChangeLog(file: VaultEncryptedFile, password: string): Promise<ChangeLogFile> {
   let plaintext: string;
 

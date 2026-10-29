@@ -9,7 +9,10 @@ export type SyncErrorCode =
   | 'sync_corrupted'
   | 'sync_unsupported_version'
   | 'sync_authentication_failed'
-  | 'sync_invalid_change';
+  | 'sync_invalid_change'
+  | 'sync_read_failed'
+  | 'sync_write_failed'
+  | 'sync_folder_missing';
 
 export class SyncError extends Error {
   readonly code: SyncErrorCode;
