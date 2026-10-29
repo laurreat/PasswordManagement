@@ -186,3 +186,4 @@ test('commitDraft rejects a stale draft with SyncError', () => {
     commitDraft(log, v, staleDraft);
   }, (err: unknown) => err instanceof SyncError && err.code === 'sync_invalid_change');
 });
+

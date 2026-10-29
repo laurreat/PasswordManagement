@@ -61,3 +61,4 @@ export function isDraftStale(draft: VaultDraft, vault: VaultDecrypted): boolean 
   if (!current) return true;
   return (current.revision ?? 0) !== (draft.before?.revision ?? 0);
 }
+
