@@ -1,7 +1,8 @@
 # LocalPass — Documentación de seguridad
 
-> Aplicación de escritorio **100% offline**. Ningún dato del usuario sale del
-> equipo.
+> Aplicación de escritorio **local-first**. Ningún dato del usuario sale del
+> equipo, salvo el sobre cifrado que el usuario decide sincronizar entre sus
+> propios dispositivos.
 
 ---
 
@@ -24,6 +25,13 @@ LocalPass no necesita internet y no puede usarlo:
 `connect-src 'none'` es la garantía técnica: aunque un bug intentara hacer
 `fetch`, el navegador rechazaría la conexión.
 
+**Excepción de loopback (v1.3.0, sync local).** La aplicación no abre conexiones
+salientes a internet. La única excepción prevista es `127.0.0.1`, para consultar
+la API local de Syncthing —el transporte opcional que el usuario instala por
+separado— y saber si hay cambios pendientes. Esa consulta ocurre en el proceso
+principal, nunca en el renderer, y viaja por un canal IPC allowlisted. Sin esa
+excepción el botón "Cargar" no puede informar su estado.
+
 ### 1.2 Aislamiento del renderer
 
 - `sandbox: true`
@@ -34,6 +42,11 @@ LocalPass no necesita internet y no puede usarlo:
 - `devTools: false` en producción
 - Sin `preload.js` y sin IPC: el renderer no tiene ninguna vía hacia APIs de
   Node o del sistema operativo.
+
+> **v1.3.0**: la bóveda en archivo requiere un `preload.js` mínimo y un canal
+> IPC allowlisted para leer y escribir el vault. El contrato es explícito: el
+> renderer no recibe `fs`, no elige rutas arbitrarias y no hay canales
+> genéricos. Toda ruta se resuelve y se valida en el proceso principal.
 
 ### 1.3 Sin cuentas ni recuperación
 
@@ -57,6 +70,11 @@ almacena ni se transmite. Si se olvida, el vault es irrecuperable por diseño.
 | Apertura de ventanas o navegación inesperada | Guardas en el proceso principal |
 | Acceso a archivos fuera de `out/` | Verificación de path traversal en el protocolo `app://` |
 | CSV de navegador en texto plano | Se lee en memoria del renderer, nunca se envía; la UI recuerda borrarlo |
+| Carpeta de sync expuesta (nube, backup, USB) | Sólo contiene sobres cifrados; AES-256-GCM autentica cada archivo |
+| Replay de un archivo de cambios antiguo | `seq` monotónico por dispositivo y cursor de aplicación: lo ya aplicado se rechaza |
+| Alteración de un archivo de cambios por un tercero | El tag GCM falla y el archivo se reporta como alterado |
+| Un cambio aplicado dos veces | `changeId` único y cursor por dispositivo: la aplicación es idempotente |
+| Dos dispositivos editando la misma cuenta sin conexión | `baseRevision` no coincide → conflicto explícito, nunca auto-merge |
 
 ### Fuera del alcance
 
@@ -69,6 +87,9 @@ almacena ni se transmite. Si se olvida, el vault es irrecuperable por diseño.
 | Ataques de canal lateral (tiempo, caché) | Fuera del modelo de una app de escritorio |
 | Filtraciones del servicio remoto | LocalPass no puede saber si un sitio fue vulnerado |
 | El CSV original en disco | La app no puede borrarlo; eliminarlo queda a cargo del usuario |
+| Compromiso de un dispositivo sincronizado | Cada dispositivo es una puerta; al desbloquear, la contraseña maestra queda en memoria |
+| Metadatos del transporte (IDs, IPs, tamaños, horarios) | Syncthing no oculta metadatos; el contenido sí viaja cifrado |
+| Olvidar pulsar "Cargar" | El sync es manual por diseño; un cambio sin cargar no se aplica |
 
 ---
 
@@ -139,6 +160,34 @@ Advertencias honestas:
   pero bloques liberados del disco podrían conservar bytes cifrados. Para un
   borrado físico hace falta cifrado de disco completo o saneamiento del disco.
 - Se recomienda BitLocker (o equivalente) en el equipo.
+
+### 4.1 Sincronización local (v1.3.0)
+
+Diseño aprobado, todavía no implementado.
+
+| Aspecto | Implementación |
+|---------|----------------|
+| Qué se sincroniza | Sólo sobres cifrados `changes-<deviceId>.enc.json` |
+| Transporte | Syncthing, instalado aparte, sin cuentas ni relay propio |
+| Aplicación | Manual: **Guardar** en el origen, **Cargar** en el destino |
+| Conflictos | `baseRevision` por cuenta; si no coincide, resolución explícita |
+| Metadatos | `deviceId`, nombre del dispositivo, `seq` y hora |
+| Clave | La misma contraseña maestra; nunca viaja ni se deriva para un servidor |
+| Nube | Ninguna |
+
+Reglas:
+
+- El log de cambios guarda valores anteriores y nuevos, incluidos passwords.
+  Tiene la misma sensibilidad que el vault: se cifra con el mismo esquema y
+  nunca se escribe en claro.
+- Un dispositivo escribe únicamente su propio archivo. Syncthing nunca ve dos
+  escritores sobre el mismo archivo, así que no genera `.sync-conflict`.
+- Un dispositivo nuevo se reconstruye desde la entrada *baseline* del
+  dispositivo que habilitó el sync.
+- Borrar una cuenta es una entrada explícita, no una ausencia. Sin eso, el
+  merge la resucitaría desde otro dispositivo.
+- La hora es informativa. El orden se decide por `seq`, porque los relojes de
+  los dispositivos se desfasan.
 
 ---
 

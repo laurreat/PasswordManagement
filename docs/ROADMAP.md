@@ -42,13 +42,30 @@
 
 ---
 
+## v1.3.0 — Sync multiplataforma (en curso)
+
+### Alcance
+
+- [ ] Registro de cambios por dispositivo con confirmación explícita
+      (**Guardar** en el origen, **Cargar** en el destino)
+- [ ] Bóveda en archivo con escritura atómica y borradores persistentes
+- [ ] Empaquetado Linux: AppImage y `.deb`
+- [ ] Cliente Android sobre Capacitor con acceso SAF
+- [ ] Detección de Syncthing por loopback y guía de emparejamiento
+
+### Fuera de esta versión
+
+- Servicio de sync propio, cuentas o relay
+- macOS: requiere notarización y se evalúa aparte
+
+---
+
 ## v2.0.0 — Largo plazo
 
 ### Multiplataforma
 
-- [ ] Soporte macOS
-- [ ] Soporte Linux
-- [ ] Build portable para Linux
+- [ ] Soporte macOS (requiere notarización)
+- [ ] Firma de código en Windows y Android
 
 ### Portabilidad de datos
 
@@ -66,14 +83,20 @@
 ## No planificado
 
 - Sincronización cloud
+- Cuentas, registro o relay propio
 - Alertas por correo o SMS
 - Telemetría
 - Auditoría con servicios de IA remotos
 - Recuperación de contraseña maestra
-- Cualquier función que requiera una conexión de red
+- Cualquier conexión saliente a internet
 
 Estas exclusiones son parte del diseño: LocalPass no debe necesitar internet ni
 enviar datos a terceros.
+
+La única excepción es el loopback (`127.0.0.1`) hacia Syncthing, que el usuario
+instala por separado y que sólo transporta el archivo cifrado. El renderer no
+tiene acceso a ninguna red: la consulta de estado ocurre en el proceso
+principal.
 
 ---
 
