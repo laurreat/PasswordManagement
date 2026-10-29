@@ -1,6 +1,7 @@
 "use client";
 
 import { VaultProvider, useVault } from "@/hooks/use-vault";
+import { SyncProvider } from "@/hooks/use-sync";
 import { SetupVault } from "@/components/vault/setup-vault";
 import { UnlockVault } from "@/components/vault/unlock-vault";
 import { Dashboard } from "@/components/vault/dashboard";
@@ -30,9 +31,11 @@ function VaultOrchestrator() {
 export default function Home() {
   return (
     <VaultProvider>
-      <main className="min-h-screen">
-        <VaultOrchestrator />
-      </main>
+      <SyncProvider>
+        <main className="min-h-screen">
+          <VaultOrchestrator />
+        </main>
+      </SyncProvider>
     </VaultProvider>
   );
 }

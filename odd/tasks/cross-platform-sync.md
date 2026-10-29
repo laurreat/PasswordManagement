@@ -134,16 +134,16 @@ medias:
       los logs de los pares. — `a08f464`
 - [x] T3.2 `src/lib/sync/sync-store.ts`: acceso del renderer a `sync.*` del
       puente (carpeta, listar, leer, escribir) con errores tipados. — `204cdbb`
-- [ ] T3.3 Sección "Cambios": tipo, hora y dispositivo de origen; botón
-      Guardar (propio) / Cargar (ajeno); badge en la navbar.
-- [ ] T3.4 Borradores cifrados (desde T2.4): editar crea un borrador, Guardar lo
-      aplica y lo publica; advertencia al cerrar y recuperación al desbloquear.
-- [ ] T3.5 Asistente de sync (desde T2.5): nombre de dispositivo editable,
-      elección de carpeta y baseline inicial.
-- [ ] T3.6 i18n ×5 de todas las cadenas nuevas.
-- [ ] T3.7 `applyConflictResolution` debe subir `revision` al aplicar la versión
+- [x] T3.3 Sección "Cambios": tipo, hora y dispositivo de origen; botón
+      Guardar (propio) / Cargar (ajeno); badge en la navbar. — `feat(sync)`
+- [x] T3.4 Borradores cifrados (desde T2.4): editar crea un borrador, Guardar lo
+      aplica y lo publica; advertencia al cerrar y recuperación al desbloquear. — `feat(sync)`
+- [x] T3.5 Asistente de sync (desde T2.5): nombre de dispositivo editable,
+      elección de carpeta y baseline inicial. — `feat(sync)`
+- [x] T3.6 i18n ×5 de todas las cadenas nuevas. — `feat(sync)`
+- [x] T3.7 `applyConflictResolution` debe subir `revision` al aplicar la versión
       elegida. Sin eso, el siguiente cambio remoto vuelve a chocar contra una
-      revisión que ya cambió de contenido.
+      revisión que ya cambió de contenido. — `52984f2`
 
 ## Criterios de aceptación Fase 0
 

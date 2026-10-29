@@ -9,7 +9,7 @@ import {
   LogOut, Globe, User, Copy, ExternalLink,
   History, Info, AlertTriangle, Download, Upload,
   Cpu, Edit2, Check, X, Wand2, ShieldAlert, Zap,
-  Moon, Sun, Languages, Eye, EyeOff, FileSpreadsheet
+  Moon, Sun, Languages, Eye, EyeOff, FileSpreadsheet, FolderSync
 } from "lucide-react";
 import { 
   Sidebar, SidebarContent, SidebarHeader, SidebarMenu, 
@@ -40,9 +40,11 @@ import { SecurityAudit } from "./security-audit";
 import { PasswordGenerator } from "./password-generator";
 import { ConflictResolver } from "./conflict-resolver";
 import { Documentation } from "./documentation";
+import { ChangesView } from "./changes";
+import { useSync } from "@/hooks/use-sync";
 import { Textarea } from "@/components/ui/textarea";
 
-type ViewMode = 'accounts' | 'conflicts' | 'generator' | 'audit' | 'settings' | 'documentation';
+type ViewMode = 'accounts' | 'changes' | 'conflicts' | 'generator' | 'audit' | 'settings' | 'documentation';
 
 const CSV_ERROR_MESSAGE_KEYS: Record<CsvImportErrorCode, string> = {
   csv_empty: 'settings.csv_error_empty',
@@ -52,6 +54,17 @@ const CSV_ERROR_MESSAGE_KEYS: Record<CsvImportErrorCode, string> = {
 
 export function Dashboard() {
   const { vault, updateVault, lock, exportVault, importVault } = useVault();
+  const { stageAccountDraft, totalPendingCount, drafts } = useSync();
+
+  useEffect(() => {
+    if (drafts.length === 0) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [drafts.length]);
   const { theme, setTheme, language, setLanguage, t } = useUISettings();
   const [view, setView] = useState<ViewMode>('accounts');
   const [searchTerm, setSearchTerm] = useState("");
@@ -199,13 +212,13 @@ export function Dashboard() {
       history: []
     };
 
-    await updateVault(v => ({
-      ...v,
-      accounts: [...v.accounts, newAccount]
-    }));
+    await stageAccountDraft({
+      type: 'create',
+      before: null,
+      after: newAccount
+    });
     
     setIsAdding(false);
-    toast({ title: t('form.save') });
   };
 
   const startEdit = () => {
@@ -237,14 +250,14 @@ export function Dashboard() {
       history: historyEntry ? [historyEntry, ...selectedAccount.history] : selectedAccount.history
     };
 
-    await updateVault(v => ({
-      ...v,
-      accounts: v.accounts.map((a: AccountEntry) => a.id === selectedAccount?.id ? updatedAccount : a)
-    }));
+    await stageAccountDraft({
+      type: 'update',
+      before: selectedAccount,
+      after: updatedAccount
+    });
 
-    setSelectedAccount(updatedAccount);
+    setSelectedAccount(null);
     setIsEditing(false);
-    toast({ title: t('dashboard.last_update') });
   };
 
   return (
@@ -267,6 +280,16 @@ export function Dashboard() {
                   <Badge className="ml-auto bg-sidebar-accent text-sidebar-foreground border-none text-[10px]">
                     {vault?.accounts.length || 0}
                   </Badge>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton isActive={view === 'changes'} onClick={() => setView('changes')}>
+                  <FolderSync className="w-4 h-4" /> <span>{t('sidebar.changes')}</span>
+                  {totalPendingCount > 0 ? (
+                    <Badge variant="secondary" className="ml-auto text-[10px] bg-primary/20 text-primary">
+                      {totalPendingCount}
+                    </Badge>
+                  ) : null}
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -399,22 +422,32 @@ export function Dashboard() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredAccounts.map(acc => (
-                      <Card key={acc.id} className="group hover:shadow-md transition-all cursor-pointer border-muted hover:border-accent/50" onClick={() => {
-                        setSelectedAccount(acc);
-                        setIsEditing(false);
-                      }}>
-                        <CardContent className="p-4 flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-accent/5 flex items-center justify-center group-hover:bg-accent/10 transition-colors">
-                            <Globe className="w-6 h-6 text-accent" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold truncate text-lg">{acc.sitio}</h3>
-                            <p className="text-sm text-muted-foreground truncate">{acc.usuario}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    {filteredAccounts.map(acc => {
+                      const hasDraft = drafts.some((d) => d.accountId === acc.id);
+                      return (
+                        <Card key={acc.id} className="group hover:shadow-md transition-all cursor-pointer border-muted hover:border-accent/50" onClick={() => {
+                          setSelectedAccount(acc);
+                          setIsEditing(false);
+                        }}>
+                          <CardContent className="p-4 flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-accent/5 flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+                              <Globe className="w-6 h-6 text-accent" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-bold truncate text-lg">{acc.sitio}</h3>
+                                {hasDraft && (
+                                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">
+                                    {t('changes.pending_draft')}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">{acc.usuario}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                     {filteredAccounts.length === 0 && (
                       <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground opacity-50">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
@@ -708,6 +741,7 @@ export function Dashboard() {
                 </div>
               )}
 
+              {view === 'changes' && <ChangesView />}
               {view === 'documentation' && <Documentation />}
             </ScrollArea>
           </div>

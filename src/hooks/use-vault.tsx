@@ -20,6 +20,7 @@ interface VaultContextType {
   /** True while the stored envelope is being located; the UI must wait. */
   isLoading: boolean;
   vault: VaultDecrypted | null;
+  masterPassword: string | null;
   unlock: (password: string) => Promise<UnlockResult>;
   lock: () => void;
   resetVault: () => Promise<void>;
@@ -208,7 +209,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <VaultContext.Provider value={{
-      isLocked, isInitialized, isLoading, vault, unlock, lock, resetVault, initialize, updateVault, saveVault, importVault, exportVault
+      isLocked, isInitialized, isLoading, vault, masterPassword, unlock, lock, resetVault, initialize, updateVault, saveVault, importVault, exportVault
     }}>
       {children}
     </VaultContext.Provider>
