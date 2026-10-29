@@ -1,6 +1,6 @@
 # LocalPass — Sync multiplataforma y plan de releases
 
-> **Estado**: FASE 2 COMPLETA (salvo prueba manual) · **Rama**: `feat/cross-platform-sync`
+> **Estado**: FASE 3 EN CURSO (motor y almacén listos) · **Rama**: `feat/cross-platform-sync`
 > **Base**: `4f1e20c` (feat/security-hardening)
 
 ## Objetivo
@@ -129,11 +129,11 @@ medias:
 
 ## Tareas Fase 3 (motor de sync + sección "Cambios")
 
-- [ ] T3.1 `src/lib/sync/engine.ts`: crear el cambio a partir de una edición,
+- [x] T3.1 `src/lib/sync/engine.ts`: crear el cambio a partir de una edición,
       sellar y escribir el log local, mantener el baseline al activar y leer
-      los logs de los pares.
-- [ ] T3.2 `src/lib/sync/sync-store.ts`: acceso del renderer a `sync.*` del
-      puente (carpeta, listar, leer, escribir) con errores tipados.
+      los logs de los pares. — `a08f464`
+- [x] T3.2 `src/lib/sync/sync-store.ts`: acceso del renderer a `sync.*` del
+      puente (carpeta, listar, leer, escribir) con errores tipados. — `204cdbb`
 - [ ] T3.3 Sección "Cambios": tipo, hora y dispositivo de origen; botón
       Guardar (propio) / Cargar (ajeno); badge en la navbar.
 - [ ] T3.4 Borradores cifrados (desde T2.4): editar crea un borrador, Guardar lo
@@ -208,11 +208,32 @@ medias:
   (abrir, crear bóveda, cerrar, reabrir) antes de dar la Fase 2 por cerrada en
   producción.
 
+### Fase 3 (parcial)
+
+- `npm run typecheck`: sin errores.
+- `npm test`: 203 tests, 203 pass, 0 fail.
+- Cobertura nueva: `sync-engine` (18) y `sync-store` (12).
+- Motor: crear/actualizar/borrar aplican al vault local y dejan la entrada con
+  el `seq` siguiente. Un borrador viejo (base que ya no coincide) se rechaza
+  con `sync_invalid_change` en lugar de escribir una versión que el usuario no
+  eligió.
+- Dos pares editando la misma cuenta con la misma base: el primero aplica y el
+  segundo queda como conflicto. El orden es determinista (deviceId).
+- Repetir la carga no reaplica nada: el cursor por dispositivo lo corta.
+- Baseline: `adoptBaseline` sólo actúa sobre un vault vacío y sin cursores,
+  arranca el cursor en `baseline.seq` y nunca toca un dispositivo existente.
+- Almacén: el archivo que se escribe no contiene ni el sitio ni la contraseña;
+  cada escritura usa sal e IV nuevos; una contraseña equivocada da
+  `sync_authentication_failed` y un archivo que no es sobre da `sync_corrupted`.
+- **No verificado**: nada de esto se vio todavía en la UI. Falta T3.3 (sección
+  "Cambios"), que es donde el usuario ejerce Guardar/Cargar.
+
 ## Próximo paso
 
-Fase 3, T3.1: motor de sync. Es la pieza que convierte una edición en un cambio
-firmado por `seq`, lo publica en `changes-<deviceId>.enc.json` y aplica los
-cambios de los pares con `baseRevision` como única regla.
+T3.3: sección "Cambios". Es la primera parte visible del sync: lista con tipo,
+hora y dispositivo de origen, y el botón que dice **Guardar** si el cambio es
+propio o **Cargar** si es ajeno. Antes hace falta T3.5 (elegir carpeta y activar
+sync) para que exista algo que listar.
 
 ---
 **Actualizado**: 2026-10-28
