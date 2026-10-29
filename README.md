@@ -126,6 +126,16 @@ docs/                            Documentación
   mapeo a frameworks y límites conocidos.
 - [docs/USER_GUIDE.md](docs/USER_GUIDE.md) — guía de uso.
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) — historial de cambios.
+- [docs/SYNC.md](docs/SYNC.md) — sincronización multiplataforma sin cuentas.
+
+## Licencia
+
+LocalPass se distribuye bajo **GNU General Public License v3.0 o posterior**
+(`GPL-3.0-or-later`). Podés usar, estudiar, modificar y redistribuir el software
+bajo los términos de esa licencia. El texto completo está en [LICENSE](LICENSE).
+
+La licencia no es un trámite: es lo que permite verificar que la aplicación hace
+lo que dice que hace, y asegura que las mejoras vuelvan a la comunidad.
 
 ## Nota de seguridad
 
