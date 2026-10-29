@@ -5,6 +5,7 @@ import type { AccountEntry, ConflictEntry, VaultDecrypted } from '@/lib/types';
 import { decryptVaultFile, encryptVault, buildExportPackage, emptyVault, parseVaultEnvelope } from '@/lib/vault-storage';
 import { toVaultErrorCode, type VaultErrorCode } from '@/lib/vault-errors';
 import { createVaultStore, type VaultStore } from '@/lib/vault-store';
+import { suggestDeviceName, withDeviceName } from '@/lib/sync/device';
 import { dedupeAccounts, mergeImportedVault } from '@/lib/vault-merge';
 import { toast } from '@/hooks/use-toast';
 import { useUISettings } from '@/hooks/use-ui-settings';
@@ -148,7 +149,9 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const initialize = async (password: string) => {
-    const vaultToSave = emptyVault();
+    // The name only labels this device in the change list; it is not an
+    // account and never leaves the folder the user chose.
+    const vaultToSave = withDeviceName(emptyVault(), suggestDeviceName(navigator.userAgent));
     await saveVault(vaultToSave, password);
     setMasterPassword(password);
     setIsLocked(false);
