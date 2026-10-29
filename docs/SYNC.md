@@ -1,0 +1,243 @@
+# LocalPass — Sincronización entre dispositivos
+
+> **Estado**: diseño aprobado, implementación en curso (v1.3.0).
+> Este documento describe el comportamiento objetivo, no el actual.
+
+LocalPass sincroniza una única bóveda cifrada entre Windows, Linux y Android
+sin cuentas, sin servidores y sin que ningún tercero retenga datos. El
+transporte es Syncthing, instalado por separado; la aplicación sólo mueve
+sobres cifrados y nunca ve la red.
+
+---
+
+## 1. Principios
+
+1. **Sin cuentas.** No hay registro, correo ni perfil hospedado. La identidad es
+   un `deviceId` criptográfico generado localmente.
+2. **Sin nube.** El transporte es entre dispositivos. Ningún servidor propio ni
+   de terceros almacena la bóveda.
+3. **La contraseña maestra nunca viaja.** Cada dispositivo descifra localmente.
+4. **Nada se aplica solo.** El usuario decide cuándo guardar y cuándo cargar,
+   incluso en la misma red.
+5. **Sin auto-merge.** Si dos dispositivos editaron la misma cuenta, el
+   conflicto es explícito.
+6. **Formato estable.** El sobre cifrado sigue siendo `vaultVersion: 1.0`.
+
+---
+
+## 2. Topologías
+
+| Escenario | Emparejamientos | Requisito |
+|-----------|-----------------|-----------|
+| Windows + Android | W ↔ A | El teléfono online durante la sesión de escritorio |
+| Linux + Android | L ↔ A | Ídem |
+| Dual boot sin partición | W ↔ A y A ↔ L, nunca W ↔ L | El teléfono online en **ambas** sesiones |
+| Tres o más equipos | Todos contra un hub siempre encendido | Un equipo 24/7 (Raspberry Pi, NAS, router) |
+
+En dual boot sólo corre un sistema a la vez, así que el teléfono es el único
+nodo que puede sostener el estado intermedio. Si el teléfono está apagado
+cuando Windows guarda, el cambio queda en Windows hasta la próxima sesión.
+
+---
+
+## 3. Modelo de cambios
+
+Cada edición es un **cambio**, no una escritura directa del vault.
+
+```
+Edición en la UI
+      │
+      ▼
+Borrador local (cifrado, NO se sincroniza)
+      │  Guardar  ← sólo en el dispositivo de origen
+      ▼
+Entrada de cambio
+      │
+      ▼
+changes-<deviceId>.enc.json  ──►  Syncthing  ──►  otros dispositivos
+                                                        │
+                                                        ▼
+                                              "Cargar" (explícito)
+```
+
+### 3.1 Etiquetas
+
+El botón depende de quién es el autor:
+
+| Dispositivo | Entrada propia | Entrada ajena |
+|-------------|----------------|---------------|
+| Origen | **Guardar** | — |
+| Destino | — | **Cargar** |
+
+Se resuelve comparando el `deviceId` de la entrada con el local.
+
+### 3.2 Borradores
+
+- Persisten cifrados en el dispositivo y sobreviven al reinicio.
+- No se sincronizan.
+- Cerrar la aplicación con borradores pendientes muestra una advertencia.
+
+---
+
+## 4. Entrada de cambio
+
+| Campo | Función |
+|-------|---------|
+| `changeId` | Identificador único; hace la aplicación idempotente |
+| `deviceId` | Autor; define la etiqueta Guardar/Cargar |
+| `seq` | Entero monotónico por dispositivo; ordena y deduplica |
+| `createdAt` | Hora informativa, no ordena |
+| `type` | `create`, `update` o `delete` |
+| `accountKey` | `sitio + usuario`, en minúsculas |
+| `baseRevision` | Revisión de la cuenta sobre la que se hizo el cambio |
+| `before` / `after` | Valores anteriores y nuevos, incluidos passwords |
+
+### 4.1 Regla de conflicto
+
+Cada cuenta lleva un contador `revision`. Al cargar:
+
+- `baseRevision === revision` → se aplica y la revisión sube.
+- `baseRevision !== revision` → **conflicto explícito**. Se abre el resolvedor
+  existente; nunca se elige por el usuario.
+
+Sin esta regla, dos dispositivos que editan la misma cuenta sin conexión
+producen dos entradas y la segunda pisa la primera en silencio.
+
+### 4.2 Borrados
+
+Borrar es una entrada `delete`, no una ausencia. Si se infiere el borrado por
+ausencia, el merge resucita la cuenta desde cualquier dispositivo que todavía
+la tenga.
+
+### 4.3 Baseline
+
+La primera vez que se habilita sync, el dispositivo escribe una entrada
+`baseline` con la bóveda completa. Un dispositivo nuevo se reconstruye desde
+ahí y luego aplica el resto del log.
+
+### 4.4 Sin poda
+
+El log no se compacta en esta fase. Cientos de cambios ocupan kilobytes
+cifrados. Si el tamaño se vuelve un problema, se agrega compactación con
+consenso de cursores.
+
+---
+
+## 5. Archivos
+
+```
+<carpeta sincronizada>/
+  changes-<deviceId>.enc.json
+```
+
+- **Un escritor por archivo.** Ningún archivo lo escriben dos dispositivos, así
+  que Syncthing no genera `.sync-conflict`.
+- Mismo sobre que el vault: `salt`, `iv`, `data`, `vaultVersion`.
+- Salt e IV nuevos en cada escritura.
+- Escritura atómica: `.tmp` + `rename`, con `.bak` de la versión anterior.
+
+---
+
+## 6. Interfaz
+
+Sección **Cambios**, con tres vistas:
+
+1. **Por guardar** — borradores locales. Acción: Guardar.
+2. **Por cargar** — entradas de otros dispositivos. Acción: Cargar.
+3. **Historial** — cambios aplicados, con tipo, hora y dispositivo de origen.
+
+Detalles:
+
+- Badge en el navbar con el total pendiente.
+- Con la bóveda cerrada la sección está deshabilitada: sin contraseña maestra en
+  memoria no se puede descifrar nada.
+- Al cargar se muestra un resumen: cuentas nuevas, modificadas, borradas y
+  conflictos.
+- Preview previo sólo cuando hay conflicto o borrado.
+- Traducciones en los cinco idiomas existentes.
+
+---
+
+## 7. Ejemplo completo
+
+Windows cambia la contraseña de GitHub:
+
+1. El usuario edita la cuenta. Se crea un borrador; el vault no cambia.
+2. Pulsa **Guardar**. Se crea la entrada `seq: 14`, `baseRevision: 7`, y se
+   aplica localmente. La revisión pasa a 8.
+3. Syncthing copia `changes-<windows>.enc.json` a Android.
+4. Android muestra en **Por cargar**:
+   `GitHub · contraseña modificada · 14:32 · Windows`.
+5. El usuario pulsa **Cargar**. Se descifra, se valida `baseRevision 7 === 7`,
+   se aplica y la revisión local pasa a 8.
+6. Android escribe su propio archivo. Linux carga desde Android, no desde
+   Windows.
+
+Si Linux hubiera editado GitHub antes del paso 5, su `baseRevision` sería 7 y
+la revisión local 8: conflicto visible en lugar de una pisada silenciosa.
+
+---
+
+## 8. Seguridad
+
+- Sólo se sincronizan sobres cifrados. Ni Syncthing ni el disco ven passwords.
+- AES-256-GCM autentica: un archivo alterado falla y se reporta como tal.
+- `seq` + cursor por dispositivo impiden aplicar dos veces o aceptar un archivo
+  viejo.
+- La contraseña maestra debe ser **idéntica** en todos los dispositivos. Si se
+  olvida, no hay recuperación: es el precio de que nadie más pueda leerla.
+- Syncthing ve metadatos: IDs de dispositivo, IPs, tamaños y horarios. No ve
+  contenido.
+- Cada dispositivo sincronizado es una puerta: malware o un keylogger captura
+  la contraseña maestra al desbloquear.
+
+---
+
+## 9. Límites conocidos
+
+- **Manual por diseño.** Un cambio en la cadena Windows → Android → Linux
+  requiere dos acciones de carga.
+- **El teléfono debe estar despierto** durante ambas sesiones de escritorio.
+- **Doze** puede retrasar el transporte; conviene Syncthing-Fork con batería sin
+  restricciones.
+- **El log crece** hasta que exista compactación.
+- **La hora mostrada** depende del reloj del dispositivo; el orden real es por
+  `seq`.
+- **Sin Syncthing no hay sync.** La aplicación funciona igual, en modo local.
+
+---
+
+## 10. Instalación del transporte
+
+| Plataforma | Cliente | Notas |
+|------------|---------|-------|
+| Windows | Syncthing nativo | Inicio automático; watch for changes |
+| Linux | Syncthing + `systemd --user` | Arranca con la sesión |
+| Android | Syncthing-Fork | Batería sin restricciones; carpeta vía SAF |
+
+Reglas:
+
+- Emparejar por device ID o QR. Sin cuentas.
+- No poner la carpeta en Google Drive, OneDrive ni Dropbox: eso sí es retención
+  de un tercero.
+- En Android, `allowBackup="false"` para que el sobre no termine en un backup
+  de Google.
+- No compartir la carpeta con dispositivos ajenos.
+
+---
+
+## 11. Fases
+
+| Fase | Contenido |
+|------|-----------|
+| 0 | Licencia, CI, documentación de seguridad |
+| 1 | Dominio de cambios y tests |
+| 2 | Bóveda en archivo, borradores, primera ejecución |
+| 3 | Motor de sync y sección Cambios |
+| 4 | Linux: AppImage y `.deb` |
+| 5 | Android: Capacitor y SAF |
+| 6 | Distribución y firma |
+
+---
+
+**Última actualización**: Octubre 2026
