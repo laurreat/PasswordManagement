@@ -1,6 +1,6 @@
 # LocalPass — Sync multiplataforma y plan de releases
 
-> **Estado**: FASE 0 COMPLETA · **Rama**: `feat/cross-platform-sync`
+> **Estado**: FASE 1 COMPLETA · **Rama**: `feat/cross-platform-sync`
 > **Base**: `4f1e20c` (feat/security-hardening)
 
 ## Objetivo
@@ -73,13 +73,44 @@ nube, sin retención de datos y con el mismo formato de sobre cifrado 1.0.
 
 ## Tareas Fase 1 (dominio, sin UI)
 
-- [ ] T1.1 `src/lib/sync/changes.ts`: tipos, validación, seq, creación.
-- [ ] T1.2 `src/lib/sync/apply.ts`: aplicar entrada, `baseRevision` vs
-      revisión, conflicto → resolver.
-- [ ] T1.3 `src/lib/sync/device.ts`: deviceId/nombre persistente.
-- [ ] T1.4 Sellado/apertura cifrado del archivo de cambios (reusar primitivas).
-- [ ] T1.5 Tests: conflicto, borrado, replay, idempotencia, tampering.
+- [x] T1.1 `src/lib/sync/changes.ts`: tipos, validación, seq, creación.
+      — `5177316`
+- [x] T1.2 `src/lib/sync/apply.ts`: aplicar entrada, `baseRevision` vs
+      revisión, conflicto → resolver. — `64a82b0`
+- [x] T1.3 `src/lib/sync/device.ts`: deviceId/nombre persistente. — `1af0c63`
+- [x] T1.4 Sellado/apertura cifrado del archivo de cambios (reusar primitivas).
+      — `485013f`
+- [x] T1.5 Tests: conflicto, borrado, replay, idempotencia, tampering.
+      — repartidos en los cuatro commits anteriores.
 - [ ] T1.6 Portapapeles con auto-limpieza 30s (barato, va aquí).
+      **Diferido a T2.6**: el renderer sólo tiene `clipboard-write`, así que no
+      puede leer lo que copió para restaurarlo ni comprobar si sigue ahí. Hace
+      falta IPC en el proceso principal, que llega en la Fase 2. No se puede
+      implementar dentro de la Fase 1 sin abrir esa superficie antes de tiempo.
+
+## Tareas Fase 2 (VaultStore de archivo + borradores + primera ejecución)
+
+Hoy la bóveda vive en `localStorage` del renderer. Eso funciona en Windows,
+pero no es un archivo que Syncthing pueda ver, no sobrevive a un borrado de
+datos del WebView en Android y no se puede respaldar. La Fase 2 la mueve a
+disco sin cambiar el formato 1.0.
+
+- [ ] T2.1 `electron/preload.js` + IPC mínimo en `electron/main.js`:
+      `contextBridge` con `vault.read/write`, `sync.readLog/writeLog/listLogs`,
+      `clipboard.copyTemp`, `app.info`. El renderer nunca envía rutas: el
+      proceso principal las deriva de `app.getPath('userData')` y de la carpeta
+      de sync elegida.
+- [ ] T2.2 `src/lib/vault-store.ts`: interfaz `VaultStore` (`read`, `write`,
+      `remove`) con dos implementaciones: archivo (IPC) y `localStorage`
+      (fallback web/dev). Migración única `localStorage` → archivo, sin borrar
+      el original hasta confirmar escritura.
+- [ ] T2.3 Escritura atómica en el proceso principal: temporal en el mismo
+      directorio + `fsync` + `rename`, permisos `0600` donde el SO los soporte.
+- [ ] T2.4 Borradores cifrados: `drafts` dentro del sobre, recuperación al
+      desbloquear y advertencia al cerrar con cambios sin guardar.
+- [ ] T2.5 Asistente de primera ejecución: nombre de dispositivo + carpeta de
+      sync + creación del baseline al activar sync.
+- [ ] T2.6 Portapapeles con autolimpieza 30s vía IPC (cierra T1.6).
 
 ## Criterios de aceptación Fase 0
 
@@ -105,10 +136,27 @@ nube, sin retención de datos y con el mismo formato de sobre cifrado 1.0.
   y `LocalPass-1.1.0-portable.exe` (105,6 MB).
 - CI real: **no verificado**. Requiere push a `origin`; no se hizo push.
 
+### Fase 1
+
+- `npm run typecheck`: sin errores.
+- `npm test`: 138 tests, 138 pass, 0 fail (85 previos + 53 nuevos).
+- Cobertura nueva: `sync-changes` (18), `sync-apply` (14), `sync-seal` (9),
+  `sync-device` (12).
+- Idempotencia comprobada: aplicar dos veces el mismo log no duplica cuentas ni
+  conflictos; el cursor por dispositivo corta el replay.
+- Conflicto comprobado: `baseRevision` desfasada deja la versión local intacta y
+  registra `conflict:<changeId>` con la versión remota.
+- Borrado comprobado: un `update` sobre una cuenta borrada localmente se
+  descarta (`missing_account`); un `delete` sin cuenta es no-op.
+- Manipulación comprobada: ciphertext o IV alterados fallan como
+  `sync_authentication_failed`; contenido autenticado con versión desconocida
+  falla como `sync_unsupported_version` y nunca se interpreta.
+- El sobre sellado no contiene el sitio ni la contraseña en claro.
+
 ## Próximo paso
 
-T1.1: `src/lib/sync/changes.ts` — tipos, validación, `seq` y creación de
-entradas.
+Fase 2, T2.1: puente `preload` + IPC de archivo. La bóveda deja `localStorage`
+y pasa a `<userData>/vault.enc.json`; el resto de la app no cambia de formato.
 
 ---
 **Actualizado**: 2026-10-28
