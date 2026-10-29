@@ -1,6 +1,6 @@
 # LocalPass — Sync multiplataforma y plan de releases
 
-> **Estado**: FASE 1 COMPLETA · **Rama**: `feat/cross-platform-sync`
+> **Estado**: FASE 2 COMPLETA (salvo prueba manual) · **Rama**: `feat/cross-platform-sync`
 > **Base**: `4f1e20c` (feat/security-hardening)
 
 ## Objetivo
@@ -90,27 +90,60 @@ nube, sin retención de datos y con el mismo formato de sobre cifrado 1.0.
 
 ## Tareas Fase 2 (VaultStore de archivo + borradores + primera ejecución)
 
-Hoy la bóveda vive en `localStorage` del renderer. Eso funciona en Windows,
-pero no es un archivo que Syncthing pueda ver, no sobrevive a un borrado de
-datos del WebView en Android y no se puede respaldar. La Fase 2 la mueve a
-disco sin cambiar el formato 1.0.
+Hoy la bóveda vivía en `localStorage` del renderer. Eso funciona en Windows,
+pero no es un archivo que el usuario pueda respaldar, no sobrevive a un borrado
+de datos del WebView en Android y crece dentro del perfil de Chromium. La Fase 2
+la mueve a disco sin cambiar el formato 1.0.
 
-- [ ] T2.1 `electron/preload.js` + IPC mínimo en `electron/main.js`:
+- [x] T2.1 `electron/preload.js` + IPC mínimo en `electron/main.js`:
       `contextBridge` con `vault.read/write`, `sync.readLog/writeLog/listLogs`,
       `clipboard.copyTemp`, `app.info`. El renderer nunca envía rutas: el
       proceso principal las deriva de `app.getPath('userData')` y de la carpeta
-      de sync elegida.
-- [ ] T2.2 `src/lib/vault-store.ts`: interfaz `VaultStore` (`read`, `write`,
+      de sync elegida. — `bc5e992`
+- [x] T2.2 `src/lib/vault-store.ts`: interfaz `VaultStore` (`read`, `write`,
       `remove`) con dos implementaciones: archivo (IPC) y `localStorage`
       (fallback web/dev). Migración única `localStorage` → archivo, sin borrar
-      el original hasta confirmar escritura.
-- [ ] T2.3 Escritura atómica en el proceso principal: temporal en el mismo
+      el original hasta confirmar escritura. — `dcb4a78`
+- [x] T2.3 Escritura atómica en el proceso principal: temporal en el mismo
       directorio + `fsync` + `rename`, permisos `0600` donde el SO los soporte.
-- [ ] T2.4 Borradores cifrados: `drafts` dentro del sobre, recuperación al
-      desbloquear y advertencia al cerrar con cambios sin guardar.
-- [ ] T2.5 Asistente de primera ejecución: nombre de dispositivo + carpeta de
-      sync + creación del baseline al activar sync.
-- [ ] T2.6 Portapapeles con autolimpieza 30s vía IPC (cierra T1.6).
+      — `e850d53`
+- [x] T2.6 Portapapeles con autolimpieza 30s vía IPC (cierra T1.6).
+      — `85ec740`
+- [ ] T2.4 Borradores cifrados → **movido a T3.4**.
+- [ ] T2.5 Asistente de primera ejecución → **movido a T3.5**.
+
+### Reordenamiento Fase 2 → Fase 3
+
+T2.4 y T2.5 no se pueden cerrar antes del motor de sync sin dejar la app a
+medias:
+
+- Un borrador sin la sección "Cambios" no tiene dónde verse, guardarse ni
+  descartarse. Construir el almacén ahora obliga a rediseñarlo cuando exista la
+  lista.
+- El baseline de activación lo mantiene el motor: crearlo en la Fase 2 deja un
+  archivo que queda obsoleto con la primera edición, y un dispositivo nuevo
+  reconstruiría desde un estado falso.
+- El nombre de dispositivo sí quedó resuelto: se sugiere en la primera
+  ejecución (`suggestDeviceName`) y renombrarlo vive en la sección de sync,
+  donde el nombre se usa de verdad.
+
+## Tareas Fase 3 (motor de sync + sección "Cambios")
+
+- [ ] T3.1 `src/lib/sync/engine.ts`: crear el cambio a partir de una edición,
+      sellar y escribir el log local, mantener el baseline al activar y leer
+      los logs de los pares.
+- [ ] T3.2 `src/lib/sync/sync-store.ts`: acceso del renderer a `sync.*` del
+      puente (carpeta, listar, leer, escribir) con errores tipados.
+- [ ] T3.3 Sección "Cambios": tipo, hora y dispositivo de origen; botón
+      Guardar (propio) / Cargar (ajeno); badge en la navbar.
+- [ ] T3.4 Borradores cifrados (desde T2.4): editar crea un borrador, Guardar lo
+      aplica y lo publica; advertencia al cerrar y recuperación al desbloquear.
+- [ ] T3.5 Asistente de sync (desde T2.5): nombre de dispositivo editable,
+      elección de carpeta y baseline inicial.
+- [ ] T3.6 i18n ×5 de todas las cadenas nuevas.
+- [ ] T3.7 `applyConflictResolution` debe subir `revision` al aplicar la versión
+      elegida. Sin eso, el siguiente cambio remoto vuelve a chocar contra una
+      revisión que ya cambió de contenido.
 
 ## Criterios de aceptación Fase 0
 
@@ -153,10 +186,33 @@ disco sin cambiar el formato 1.0.
   falla como `sync_unsupported_version` y nunca se interpreta.
 - El sobre sellado no contiene el sitio ni la contraseña en claro.
 
+### Fase 2
+
+- `npm run typecheck`: sin errores.
+- `npm test`: 173 tests, 173 pass, 0 fail.
+- Cobertura nueva: `electron-storage` (16), `vault-store` (13) y
+  `clipboard` (6). Total 35 pruebas nuevas.
+- Escritura atómica: el test comprueba que no queda ningún `.tmp` y que una
+  segunda escritura reemplaza el contenido anterior.
+- Recorrido de rutas: `syncLogPath` rechaza `../../etc/passwd`, `a/b`, cadena
+  vacía y un id de 65 caracteres. `listChangeLogs` ignora cualquier archivo que
+  no sea `changes-<id>.enc.json`.
+- Migración: un vault viejo en `localStorage` se copia al archivo una sola vez,
+  nunca pisa un archivo existente y se reintenta si la escritura falla.
+- `node --check` sobre `electron/main.js`, `electron/preload.js` y
+  `electron/storage.js`: sin errores de sintaxis.
+- `npm run build:next`: compila. Sigue siendo export estático.
+- **No verificado**: la app Electron no se abrió. Los canales IPC, el diálogo de
+  carpeta y el borrado del portapapeles están probados en su lógica y en su
+  contrato, no en una ventana real. Falta una prueba manual de extremo a extremo
+  (abrir, crear bóveda, cerrar, reabrir) antes de dar la Fase 2 por cerrada en
+  producción.
+
 ## Próximo paso
 
-Fase 2, T2.1: puente `preload` + IPC de archivo. La bóveda deja `localStorage`
-y pasa a `<userData>/vault.enc.json`; el resto de la app no cambia de formato.
+Fase 3, T3.1: motor de sync. Es la pieza que convierte una edición en un cambio
+firmado por `seq`, lo publica en `changes-<deviceId>.enc.json` y aplica los
+cambios de los pares con `baseRevision` como única regla.
 
 ---
 **Actualizado**: 2026-10-28
