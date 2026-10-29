@@ -90,9 +90,12 @@ nube, sin retención de datos y con el mismo formato de sobre cifrado 1.0.
 
 ## Registro de verificación
 
-- `LICENSE`: 34.674 bytes, UTF-8 sin BOM, 0 caracteres de reemplazo. Origen:
-  texto GPL-3.0 de SPDX (`GPL-3.0-or-later.txt`). `gnu.org` no respondió desde
-  esta red; se usó el espejo de SPDX.
+- `LICENSE`: 35.149 bytes, ASCII puro, sin BOM. Origen: `COPYING` de GNU
+  coreutils, copia canónica de la FSF. Se descartó el texto de SPDX: usa
+  comillas tipográficas y `©`, no el formato canónico. `gnu.org` no responde
+  desde esta red (reset en 80 y 443 tras completar TCP); la elección se validó
+  contra dos copias GNU independientes (coreutils y GCC), que sólo difieren en
+  `https://fsf.org/` vs `http://fsf.org/`.
 - `package.json`: parsea correctamente y declara `"license": "GPL-3.0-or-later"`.
 - `.github/workflows/ci.yml`: parseado con `js-yaml`; jobs detectados:
   `verify`, `build-windows`.
