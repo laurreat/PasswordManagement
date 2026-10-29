@@ -1,6 +1,6 @@
 # LocalPass — Sync multiplataforma y plan de releases
 
-> **Estado**: FASE 0 EN CURSO · **Rama**: `feat/cross-platform-sync`
+> **Estado**: FASE 0 COMPLETA · **Rama**: `feat/cross-platform-sync`
 > **Base**: `4f1e20c` (feat/security-hardening)
 
 ## Objetivo
@@ -59,14 +59,15 @@ nube, sin retención de datos y con el mismo formato de sobre cifrado 1.0.
 
 - [x] T0.1 Crear rama `feat/cross-platform-sync` desde `4f1e20c`.
 - [x] T0.2 Crear este documento de tarea + espejo en Engram.
-- [ ] T0.3 `LICENSE` GPL-3.0-or-later + campo `license` en `package.json`
-      + sección en `README.md`.
-- [ ] T0.4 CI: `.github/workflows/ci.yml` (typecheck / tests / build Windows).
-- [ ] T0.5 Corregir `docs/ROADMAP.md` (excepción loopback) y ampliar
-      `docs/SECURITY.md` (política de sync local).
-- [ ] T0.6 `docs/SYNC.md`: topologías (2 dispositivos, 3 con puente en dual
-      boot), modelo de cambios, fases, riesgos.
-- [ ] T0.7 Verificación: `npm run typecheck`, `npm test`, `npm run build`.
+- [x] T0.3 `LICENSE` GPL-3.0-or-later + campo `license` en `package.json`
+      + sección en `README.md`. — `ae756ad`
+- [x] T0.4 CI: `.github/workflows/ci.yml` (typecheck / tests / build Windows).
+      — `b14ef61`
+- [x] T0.5 Corregir `docs/ROADMAP.md` (excepción loopback) y ampliar
+      `docs/SECURITY.md` (política de sync local). — `d4a8dc0`
+- [x] T0.6 `docs/SYNC.md`: topologías (2 dispositivos, 3 con puente en dual
+      boot), modelo de cambios, fases, riesgos. — `c9201c7`
+- [x] T0.7 Verificación: `npm run typecheck`, `npm test`, `npm run build`.
       CI no es ejecutable en local: se valida sintaxis YAML y estructura de
       jobs; el resultado real queda pendiente del primer push.
 
@@ -89,11 +90,22 @@ nube, sin retención de datos y con el mismo formato de sobre cifrado 1.0.
 
 ## Registro de verificación
 
-- (Vacío — se completa por tarea con el comando y su resultado observado.)
+- `LICENSE`: 34.674 bytes, UTF-8 sin BOM, 0 caracteres de reemplazo. Origen:
+  texto GPL-3.0 de SPDX (`GPL-3.0-or-later.txt`). `gnu.org` no respondió desde
+  esta red; se usó el espejo de SPDX.
+- `package.json`: parsea correctamente y declara `"license": "GPL-3.0-or-later"`.
+- `.github/workflows/ci.yml`: parseado con `js-yaml`; jobs detectados:
+  `verify`, `build-windows`.
+- `npm run typecheck`: sin errores.
+- `npm test`: 85 tests, 85 pass, 0 fail.
+- `npm run build`: completo. Artefactos: `LocalPass-Setup-1.1.0.exe` (116,3 MB)
+  y `LocalPass-1.1.0-portable.exe` (105,6 MB).
+- CI real: **no verificado**. Requiere push a `origin`; no se hizo push.
 
 ## Próximo paso
 
-T0.3: licencia, campo en package.json y README.
+T1.1: `src/lib/sync/changes.ts` — tipos, validación, `seq` y creación de
+entradas.
 
 ---
 **Actualizado**: 2026-10-28
