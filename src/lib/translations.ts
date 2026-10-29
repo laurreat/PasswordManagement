@@ -112,6 +112,7 @@ export const translations = {
       new_credential: "New Credential",
       optional_notes: "Optional notes",
       copied: "Copied",
+      copied_auto_clear: "The clipboard clears in 30 s.",
       accounts_imported: "accounts in vault",
     },
     generator: {
@@ -369,6 +370,7 @@ strength: {
       new_credential: "Nueva Credencial",
       optional_notes: "Notas opcionales",
       copied: "Copiado",
+      copied_auto_clear: "El portapapeles se borra en 30 s.",
       accounts_imported: "cuentas en la bóveda",
     },
     generator: {
@@ -626,6 +628,7 @@ strength: {
       new_credential: "Nova Credencial",
       optional_notes: "Notas opcionais",
       copied: "Copiado",
+      copied_auto_clear: "A área de transferência é limpa em 30 s.",
       accounts_imported: "contas no cofre",
     },
     generator: {
@@ -883,6 +886,7 @@ strength: {
       new_credential: "Nouvel Identifiant",
       optional_notes: "Notes optionnelles",
       copied: "Copié",
+      copied_auto_clear: "Le presse-papiers sera vidé dans 30 s.",
       accounts_imported: "comptes dans le coffre",
     },
     generator: {
@@ -1140,6 +1144,7 @@ strength: {
       new_credential: "新凭证",
       optional_notes: "可选备注",
       copied: "已复制",
+      copied_auto_clear: "剪贴板将在 30 秒后清空。",
       accounts_imported: "账户已导入保险库",
     },
     generator: {

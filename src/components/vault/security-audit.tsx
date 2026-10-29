@@ -51,6 +51,7 @@ import {
   remainingFindingCodes,
 } from "@/lib/audit-remediation";
 import type { AccountEntry } from "@/lib/types";
+import { copySecret } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 
 type AuditFilter = 'all' | 'issues' | 'reuse' | 'clean';
@@ -197,10 +198,10 @@ export function SecurityAudit() {
     );
   };
 
-  const copyNewPassword = () => {
+  const copyNewPassword = async () => {
     if (!newPassword) return;
-    navigator.clipboard.writeText(newPassword);
-    toast({ title: t('generator.copied') });
+    if (!(await copySecret(newPassword))) return;
+    toast({ title: t('generator.copied'), description: t('form.copied_auto_clear') });
   };
 
   const applyRemediation = async () => {
@@ -445,9 +446,9 @@ export function SecurityAudit() {
                             className="h-7 w-7 shrink-0"
                             title={t('form.copied')}
                             aria-label={t('form.copied')}
-                            onClick={() => {
-                              navigator.clipboard.writeText(account.password);
-                              toast({ title: t('form.copied') });
+                            onClick={async () => {
+                              if (!(await copySecret(account.password))) return;
+                              toast({ title: t('form.copied'), description: t('form.copied_auto_clear') });
                             }}
                           >
                             <Copy className="w-3.5 h-3.5" />

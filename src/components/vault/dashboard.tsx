@@ -26,6 +26,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { toVaultErrorCode } from "@/lib/vault-errors";
 import { vaultErrorMessageKey } from "@/lib/vault-error-messages";
+import { copySecret } from "@/lib/clipboard";
 import { auditVault } from "@/lib/security-audit";
 import {
   applyCsvImport,
@@ -98,9 +99,12 @@ export function Dashboard() {
     [vault, csvParsed]
   );
 
-  const handleCopy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: t('form.copied'), description: `${label}` });
+  const handleCopy = async (text: string, label: string) => {
+    if (!(await copySecret(text))) return;
+    toast({
+      title: t('form.copied'),
+      description: `${label} · ${t('form.copied_auto_clear')}`,
+    });
   };
 
   const resetCsvImport = () => {

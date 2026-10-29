@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Copy, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { copySecret } from "@/lib/clipboard";
 import {
   generatePassword,
   getPoolSize,
@@ -50,9 +51,9 @@ export function PasswordGenerator() {
     generate();
   }, [generate]);
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(password);
-    toast({ title: t('generator.copied'), description: "" });
+  const copyToClipboard = async () => {
+    if (!(await copySecret(password))) return;
+    toast({ title: t('generator.copied'), description: t('form.copied_auto_clear') });
   };
 
   const poolSize = getPoolSize({ length: length[0], ...settings });
