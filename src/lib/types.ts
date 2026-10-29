@@ -13,6 +13,19 @@ export type AccountEntry = {
   updatedAt: string;
   deviceId: string;
   history: PasswordHistory[];
+  /**
+   * Monotonic per-account revision. Absent on vaults written before sync
+   * existed; every reader treats it as 0. A change applies only when its
+   * `baseRevision` matches this value, which is what turns a divergent edit
+   * into an explicit conflict instead of a silent overwrite.
+   */
+  revision?: number;
+};
+
+export type VaultSyncState = {
+  deviceName: string;
+  /** Highest processed `seq` per peer device. */
+  appliedSeq: Record<string, number>;
 };
 
 export type ConflictEntry = {
@@ -31,6 +44,8 @@ export type VaultDecrypted = {
   updatedAt: string;
   accounts: AccountEntry[];
   conflicts: ConflictEntry[];
+  /** Device-local sync bookkeeping. Never shared with peers. */
+  sync?: VaultSyncState;
 };
 
 export type VaultEncryptedFile = {
