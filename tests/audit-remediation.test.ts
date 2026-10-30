@@ -142,6 +142,13 @@ test('applyPasswordRemediation updates the password and keeps the previous one',
   assert.equal(result.conflicts, vault.conflicts);
 });
 
+test('applyPasswordRemediation grows the revision by exactly one', () => {
+  const account = entry({ revision: 4 });
+  const result = applyPasswordRemediation(vaultWith([account]), account.id, STRONG, NOW);
+
+  assert.equal(result.accounts[0].revision, 5);
+});
+
 test('applyPasswordRemediation does not mutate the vault it receives', () => {
   const vault = vaultWith([entry()]);
   const before = JSON.stringify(vault);

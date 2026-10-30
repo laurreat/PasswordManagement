@@ -147,7 +147,7 @@ test('conflict resolution replaces the account in place and clears the conflict'
   assert.equal(resolved.accounts[1].revision, 1);
 });
 
-test('conflict resolution bumps revision beyond both conflicting revisions', () => {
+test('conflict resolution grows the local revision by exactly one', () => {
   const local = account({ password: 'local', revision: 3 });
   const imported = account({ password: 'imported', revision: 5 });
   const source = vault({
@@ -165,8 +165,30 @@ test('conflict resolution bumps revision beyond both conflicting revisions', () 
   });
 
   const resolved = applyConflictResolution(source, 'c2', 'local');
-  assert.equal(resolved.accounts[0].revision, 6);
+  assert.equal(resolved.accounts[0].revision, 4);
   assert.equal(resolved.accounts[0].password, 'local');
+});
+
+test('conflict resolution ignores a higher imported revision', () => {
+  const local = account({ password: 'local', revision: 1 });
+  const imported = account({ password: 'imported', revision: 9 });
+  const source = vault({
+    accounts: [local],
+    conflicts: [
+      {
+        conflictId: 'c3',
+        sitio: local.sitio,
+        usuario: local.usuario,
+        versionLocal: local,
+        versionImportada: imported,
+        detectedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ],
+  });
+
+  const resolved = applyConflictResolution(source, 'c3', 'imported');
+  assert.equal(resolved.accounts[0].revision, 2);
+  assert.equal(resolved.accounts[0].password, 'imported');
 });
 
 test('conflict resolution is a no-op for an unknown id', () => {

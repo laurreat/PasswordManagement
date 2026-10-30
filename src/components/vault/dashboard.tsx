@@ -42,7 +42,9 @@ import { ConflictResolver } from "./conflict-resolver";
 import { Documentation } from "./documentation";
 import { ChangesView } from "./changes";
 import { useSync } from "@/hooks/use-sync";
+import type { PublishableChange } from "@/lib/sync/engine";
 import { Textarea } from "@/components/ui/textarea";
+import { createDraft } from "@/lib/drafts";
 
 type ViewMode = 'accounts' | 'changes' | 'conflicts' | 'generator' | 'audit' | 'settings' | 'documentation';
 
@@ -54,7 +56,7 @@ const CSV_ERROR_MESSAGE_KEYS: Record<CsvImportErrorCode, string> = {
 
 export function Dashboard() {
   const { vault, updateVault, lock, exportVault, importVault } = useVault();
-  const { stageAccountDraft, totalPendingCount, drafts } = useSync();
+  const { stageAccountDraft, commitSingleDraft, totalPendingCount, drafts, publishAccountChanges } = useSync();
 
   useEffect(() => {
     if (drafts.length === 0) return;
@@ -167,7 +169,13 @@ export function Dashboard() {
     if (!csvParsed) return;
     setCsvImporting(true);
     try {
-      await updateVault(v => applyCsvImport(v, csvParsed.accounts).vault);
+      let changes: PublishableChange[] = [];
+      await updateVault(v => {
+        const result = applyCsvImport(v, csvParsed.accounts);
+        changes = result.changes;
+        return result.vault;
+      });
+      await publishAccountChanges(changes);
       const counts = csvPreview;
       const summary = [
         `${t('settings.csv_added')}: ${counts?.added ?? 0}`,
@@ -903,14 +911,13 @@ export function Dashboard() {
 
               {!isEditing && (
                 <div className="pt-6 flex gap-2">
-                  <Button variant="outline" className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-white" onClick={() => {
-                    if (confirm(t('dashboard.delete_confirm'))) {
-                      updateVault(v => ({
-                        ...v,
-                        accounts: v.accounts.filter(a => a.id !== selectedAccount.id)
-                      }));
-                      setSelectedAccount(null);
-                    }
+                  <Button variant="outline" className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-white" onClick={async () => {
+                    if (!confirm(t('dashboard.delete_confirm'))) return;
+
+                    await commitSingleDraft(
+                      createDraft({ type: 'delete', before: selectedAccount, after: null })
+                    );
+                    setSelectedAccount(null);
                   }}>{t('dashboard.delete')}</Button>
                   <Button className="flex-1" asChild>
                     <a href={`https://${selectedAccount.sitio}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">

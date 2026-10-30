@@ -52,6 +52,9 @@ import {
 } from "@/lib/audit-remediation";
 import type { AccountEntry } from "@/lib/types";
 import { copySecret } from "@/lib/clipboard";
+import { appendAccountChange, createAccountChange } from "@/lib/change-history";
+import { useSync } from "@/hooks/use-sync";
+import type { PublishableChange } from "@/lib/sync/engine";
 import { cn } from "@/lib/utils";
 
 type AuditFilter = 'all' | 'issues' | 'reuse' | 'clean';
@@ -102,6 +105,7 @@ function otherPasswordsFor(vaultAccounts: AccountEntry[], accountId: string): st
 
 export function SecurityAudit() {
   const { vault, updateVault } = useVault();
+  const { publishAccountChanges } = useSync();
   const { t } = useUISettings();
   const { toast } = useToast();
 
@@ -209,7 +213,29 @@ export function SecurityAudit() {
 
     setIsSaving(true);
     try {
-      await updateVault(v => applyPasswordRemediation(v, remediationTarget.id, newPassword));
+      let published: PublishableChange[] = [];
+      await updateVault(v => {
+        const before = v.accounts.find(account => account.id === remediationTarget.id) ?? null;
+        const next = applyPasswordRemediation(v, remediationTarget.id, newPassword);
+        const after = next.accounts.find(account => account.id === remediationTarget.id) ?? null;
+
+        if (!before || !after || after.password === before.password) return next;
+
+        published = [{ type: 'update', before, after }];
+
+        return appendAccountChange(
+          next,
+          createAccountChange({
+            type: 'update',
+            before,
+            after,
+            deviceId: v.deviceId,
+            deviceName: v.sync?.deviceName || undefined,
+            source: 'local',
+          })
+        );
+      });
+      await publishAccountChanges(published);
       toast({
         title: t('audit.fix_saved_title'),
         description: t('audit.fix_saved_desc'),

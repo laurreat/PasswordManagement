@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { useVault } from "@/hooks/use-vault";
 import { useUISettings } from "@/hooks/use-ui-settings";
+import { useSync } from "@/hooks/use-sync";
 import { AccountEntry, ConflictEntry } from "@/lib/types";
-import { applyConflictResolution, type ConflictSelection } from "@/lib/vault-merge";
+import { accountKey, applyConflictResolution, type ConflictSelection } from "@/lib/vault-merge";
+import type { PublishableChange } from "@/lib/sync/engine";
+import { appendAccountChange, createAccountChange } from "@/lib/change-history";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,13 +16,48 @@ import { toast } from "@/hooks/use-toast";
 
 export function ConflictResolver() {
   const { vault, updateVault } = useVault();
+  const { publishAccountChanges } = useSync();
   const { t } = useUISettings();
 
   const resolveConflict = async (conflictId: string, selection: ConflictSelection) => {
     if (!vault) return;
 
-    await updateVault((current) => applyConflictResolution(current, conflictId, selection));
+    let published: PublishableChange[] = [];
+    await updateVault((current) => {
+      const conflict = current.conflicts.find((entry) => entry.conflictId === conflictId);
+      const next = applyConflictResolution(current, conflictId, selection);
+      if (!conflict) return next;
 
+      const key = accountKey(conflict);
+      const before = current.accounts.find((account) => accountKey(account) === key) ?? null;
+      const after = next.accounts.find((account) => accountKey(account) === key) ?? null;
+      if (!after) return next;
+
+      // The resolved state must travel even when the user kept the local
+      // version: peers need the revision bump to stop diverging.
+      if (after) {
+        published = [{
+          type: before ? 'update' : 'create',
+          before,
+          after,
+          allowEmptyDiff: true,
+        }];
+      }
+
+      return appendAccountChange(
+        next,
+        createAccountChange({
+          type: before ? 'update' : 'create',
+          before,
+          after,
+          deviceId: current.deviceId,
+          deviceName: current.sync?.deviceName || undefined,
+          source: 'local',
+        })
+      );
+    });
+
+    await publishAccountChanges(published);
     toast({ title: t('conflicts.resolved_title'), description: t('conflicts.resolved_desc') });
   };
 

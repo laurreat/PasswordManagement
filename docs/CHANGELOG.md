@@ -6,6 +6,40 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [Unreleased]
+
+### Agregado
+
+- **Historial de cambios por cuenta**: cada creación, edición, borrado,
+  importación y conflicto resuelto deja una entrada cifrada dentro del vault,
+  con valores antes/después, tipo, hora y dispositivo de origen.
+- **Ventana visible de 3 días**: las entradas más antiguas no se eliminan; se
+  ocultan por defecto y se pueden revelar manualmente desde la pestaña
+  **Historial** de la sección Cambios.
+- `src/lib/change-history.ts`: dominio puro para crear, deduplicar y separar el
+  historial por antigüedad.
+- `tests/change-history.test.ts`: cobertura de la retención, el límite de tres
+  días, la deduplicación y los cambios replicados.
+
+### Corregido
+
+- **Guardar todos**: los borradores se aplican sobre un único snapshot del
+  vault. Antes, el segundo borrador partía de la copia anterior y podía pisar
+  el primero.
+- **Estado real de activación**: el sync se considera activo sólo cuando existe
+  el baseline del dispositivo. Elegir carpeta ya no marca el sync como activo ni
+  oculta el botón **Activar sync**, así que la activación siempre crea el
+  baseline.
+- **Publicación idempotente de borradores**: el `changeId` se deriva del
+  `draftId` y un reintento tras un fallo de guardado reaplica la entrada
+  existente en lugar de duplicarla.
+- **Mutaciones fuera de borradores**: la remediación de auditoría, la
+  importación CSV de cuentas nuevas y la resolución de conflictos ahora
+  publican su cambio en el log propio. La bóveda local se guarda primero; si la
+  escritura del log falla, se avisa que el cambio no se publicó.
+
+---
+
 ## [1.1.0] - 2026-10-28
 
 ### Cambiado

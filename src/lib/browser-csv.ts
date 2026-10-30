@@ -10,6 +10,8 @@
 
 import type { AccountEntry, VaultDecrypted } from './types.ts';
 import { accountKey, mergeImportedVault } from './vault-merge.ts';
+import { appendAccountChange, createAccountChange } from './change-history.ts';
+import type { PublishableChange } from './sync/engine.ts';
 
 export type BrowserCsvFormat = 'chrome' | 'firefox' | 'bitwarden' | 'lastpass' | 'generic';
 
@@ -344,6 +346,7 @@ function toAccountEntries(
     updatedAt: now,
     deviceId,
     history: [],
+    revision: 1,
   }));
 }
 
@@ -355,7 +358,7 @@ function toAccountEntries(
 export function applyCsvImport(
   vault: VaultDecrypted,
   accounts: ImportedAccount[]
-): { vault: VaultDecrypted; preview: CsvImportPreview } {
+): { vault: VaultDecrypted; preview: CsvImportPreview; changes: PublishableChange[] } {
   const preview = previewCsvImport(vault, accounts);
 
   const local = new Map(vault.accounts.map((account) => [accountKey(account), account]));
@@ -364,7 +367,7 @@ export function applyCsvImport(
     return !match || match.password !== account.password;
   });
 
-  if (pending.length === 0) return { vault, preview };
+  if (pending.length === 0) return { vault, preview, changes: [] };
 
   const now = new Date().toISOString();
   const imported: VaultDecrypted = {
@@ -376,5 +379,33 @@ export function applyCsvImport(
     conflicts: [],
   };
 
-  return { vault: mergeImportedVault(vault, imported), preview };
+  const merged = mergeImportedVault(vault, imported);
+  const beforeByKey = new Map(vault.accounts.map((account) => [accountKey(account), account]));
+  const afterByKey = new Map(merged.accounts.map((account) => [accountKey(account), account]));
+
+  let withHistory = merged;
+  const changes: PublishableChange[] = [];
+  for (const account of pending) {
+    const key = accountKey(account);
+    const before = beforeByKey.get(key) ?? null;
+    const after = afterByKey.get(key);
+    // A different local password becomes a conflict, not an applied import.
+    if (!after || after.password !== account.password) continue;
+
+    changes.push({ type: before ? 'update' : 'create', before, after });
+    withHistory = appendAccountChange(
+      withHistory,
+      createAccountChange({
+        type: before ? 'update' : 'create',
+        before,
+        after,
+        createdAt: now,
+        deviceId: vault.deviceId,
+        deviceName: vault.sync?.deviceName || undefined,
+        source: 'import',
+      })
+    );
+  }
+
+  return { vault: withHistory, preview, changes };
 }

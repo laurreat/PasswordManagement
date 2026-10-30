@@ -1,7 +1,9 @@
 # LocalPass — Sincronización entre dispositivos
 
-> **Estado**: diseño aprobado, implementación en curso (v1.3.0).
-> Este documento describe el comportamiento objetivo, no el actual.
+> **Estado**: Fase 3 implementada (motor, sección Cambios y replicación en
+> cadena); falta la prueba manual de la UI. Fases 4–6 pendientes: Linux, Android
+> y distribución. Este documento describe el comportamiento actual del sync de
+> escritorio.
 
 LocalPass sincroniza una única bóveda cifrada entre Windows, Linux y Android
 sin cuentas, sin servidores y sin que ningún tercero retenga datos. El
@@ -77,6 +79,28 @@ Se resuelve comparando el `deviceId` de la entrada con el local.
 - No se sincronizan.
 - Cerrar la aplicación con borradores pendientes muestra una advertencia.
 
+### 3.3 Qué operaciones se publican
+
+No toda escritura local es un cambio sincronizable. Se publican en el log
+propio:
+
+- Los borradores confirmados con **Guardar**.
+- La remediación de una contraseña desde la auditoría.
+- La importación CSV de cuentas nuevas.
+- La resolución de un conflicto, incluso al conservar la versión local: la
+  entrada sólo sube la revisión y deja constancia de que ese es el estado
+  resuelto, para que los pares dejen de divergir.
+
+**No se publica** la importación de una bóveda completa (`importVault`). Es una
+migración local: las revisiones de sus cuentas vienen de otro dispositivo y se
+cargan tal cual. Publicarla como cambio rompería la serie de revisiones local y
+generaría conflictos falsos. Para replicar esa bóveda, cada dispositivo debe
+importarla o reconstruirse desde un baseline.
+
+Regla de fallo: la bóveda local se guarda primero. Si después falla la escritura
+del log, el cambio queda aplicado en este dispositivo y se avisa al usuario de
+que no se publicó para los demás; la bóveda no se revierte.
+
 ---
 
 ## 4. Entrada de cambio
@@ -91,6 +115,7 @@ Se resuelve comparando el `deviceId` de la entrada con el local.
 | `accountKey` | `sitio + usuario`, en minúsculas |
 | `baseRevision` | Revisión de la cuenta sobre la que se hizo el cambio |
 | `before` / `after` | Valores anteriores y nuevos, incluidos passwords |
+| `originDeviceId` / `originSeq` | Autor y secuencia originales, sólo en entradas replicadas |
 
 ### 4.1 Regla de conflicto
 
@@ -121,6 +146,22 @@ El log no se compacta en esta fase. Cientos de cambios ocupan kilobytes
 cifrados. Si el tamaño se vuelve un problema, se agrega compactación con
 consenso de cursores.
 
+### 4.5 Replicación en cadena
+
+En la topología Windows → Android → Linux, Linux no lee el archivo de Windows.
+Cuando Android **Carga** un cambio de Windows, además de aplicarlo lo
+re-publica en su propio log con un `seq` nuevo. Esa copia conserva el autor
+original en `originDeviceId` y `originSeq`.
+
+- El dispositivo de origen reconoce su propio cambio y no lo vuelve a aplicar.
+- Un peer que ya aplicó el original —directamente o por otro relay— lo salta
+  por el cursor del autor original.
+- El cambio replicado se marca con el dispositivo que lo publicó, pero el
+  cursor de deduplicación sigue al autor real.
+
+Esto permite que Linux reconstruya el estado desde el baseline de Android y
+aplique después los cambios replicados, sin duplicados ni conflictos falsos.
+
 ---
 
 ## 5. Archivos
@@ -144,10 +185,20 @@ Sección **Cambios**, con tres vistas:
 
 1. **Por guardar** — borradores locales. Acción: Guardar.
 2. **Por cargar** — entradas de otros dispositivos. Acción: Cargar.
-3. **Historial** — cambios aplicados, con tipo, hora y dispositivo de origen.
+3. **Historial** — cambios de cuenta aplicados, con tipo, hora, origen y
+   detalle antes/después.
 
 Detalles:
 
+- El historial se guarda **cifrado dentro del vault**, no depende de que el sync
+  esté activo y cubre cambios locales, remotos e importaciones. Las entradas
+  que ya existían en el log de sync se rellenan al leerlo.
+- Por defecto se muestran los cambios de los **últimos 3 días**. Los anteriores
+  quedan ocultos, no se borran, y se pueden mostrar manualmente con
+  **Mostrar antiguos**.
+- Cada entrada conserva los valores anteriores y nuevos de sitio, usuario,
+  contraseña y notas. La contraseña se muestra enmascarada hasta pulsar
+  **Mostrar contraseña**.
 - Badge en el navbar con el total pendiente.
 - Con la bóveda cerrada la sección está deshabilitada: sin contraseña maestra en
   memoria no se puede descifrar nada.

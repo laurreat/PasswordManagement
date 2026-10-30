@@ -299,7 +299,7 @@ test('applyCsvImport adds new accounts and leaves unchanged local data intact', 
   const local = entry({ id: 'same', password: 'csv-password', notas: 'notes I wrote', history: [{ password: 'old', updatedAt: NOW }] });
   const vault = vaultWith([local]);
 
-  const { vault: merged, preview } = applyCsvImport(vault, [
+  const { vault: merged, preview, changes } = applyCsvImport(vault, [
     imported(),
     imported({ sitio: 'example.com', usuario: 'new', password: 'fresh', notas: 'from csv' }),
   ]);
@@ -316,13 +316,19 @@ test('applyCsvImport adds new accounts and leaves unchanged local data intact', 
   assert.equal(added?.password, 'fresh');
   assert.equal(added?.notas, 'from csv');
   assert.equal(added?.deviceId, 'device-1');
+  assert.equal(added?.revision, 1);
   assert.deepEqual(added?.history, []);
+
+  assert.equal(changes.length, 1);
+  assert.equal(changes[0].type, 'create');
+  assert.equal(changes[0].before, null);
+  assert.equal(changes[0].after?.id, added?.id);
 });
 
 test('applyCsvImport turns a different password into a conflict instead of overwriting', () => {
   const vault = vaultWith([entry({ id: 'local', password: 'local-password' })]);
 
-  const { vault: merged, preview } = applyCsvImport(vault, [imported({ password: 'csv-password' })]);
+  const { vault: merged, preview, changes } = applyCsvImport(vault, [imported({ password: 'csv-password' })]);
 
   assert.equal(preview.conflicts, 1);
   assert.equal(merged.accounts.length, 1);
@@ -331,6 +337,7 @@ test('applyCsvImport turns a different password into a conflict instead of overw
   assert.equal(merged.conflicts.length, 1);
   assert.equal(merged.conflicts[0].versionLocal.password, 'local-password');
   assert.equal(merged.conflicts[0].versionImportada.password, 'csv-password');
+  assert.deepEqual(changes, []);
 });
 
 test('applyCsvImport returns the same vault when there is nothing to do', () => {
@@ -340,6 +347,7 @@ test('applyCsvImport returns the same vault when there is nothing to do', () => 
 
   assert.equal(result.vault, vault);
   assert.deepEqual(result.preview, { total: 1, added: 0, conflicts: 0, unchanged: 1 });
+  assert.deepEqual(result.changes, []);
 });
 
 test('applyCsvImport does not mutate the vault it receives', () => {

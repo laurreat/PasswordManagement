@@ -132,15 +132,11 @@ export function applyConflictResolution(
   const key = conflictKey(conflict);
   const index = vault.accounts.findIndex((account) => accountKey(account) === key);
 
-  const baseRevision = Math.max(
-    conflict.versionLocal.revision ?? 0,
-    conflict.versionImportada.revision ?? 0,
-    index >= 0 ? (vault.accounts[index].revision ?? 0) : 0
-  );
-
+  // Exactly one above the local revision keeps the change publishable while
+  // still guaranteeing the revision grows.
   const resolved: AccountEntry = {
     ...chosen,
-    revision: baseRevision + 1,
+    revision: index >= 0 ? (vault.accounts[index].revision ?? 0) + 1 : 1,
   };
 
   const accounts = [...vault.accounts];

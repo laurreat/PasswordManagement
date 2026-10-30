@@ -136,6 +136,9 @@ export function applyPasswordRemediation(
       password: newPassword,
       updatedAt: now,
       history,
+      // Every local edit grows the revision by exactly one so it can be
+      // published as a sync change.
+      revision: (account.revision ?? 0) + 1,
     };
   });
 

@@ -16,6 +16,8 @@
 - [x] Next.js 16.4.3, React 19.3.1, Electron 45.1.0
 - [x] Portugués, francés y chino
 - [x] Tests unitarios de los módulos puros
+- [x] Historial de cambios por cuenta, cifrado en el vault, con ventana visible
+      de 3 días y acceso manual a los cambios anteriores
 
 ---
 
@@ -42,13 +44,15 @@
 
 ---
 
-## v1.3.0 — Sync multiplataforma (en curso)
+## v1.3.0 — Sync multiplataforma (Fase 3 implementada)
 
 ### Alcance
 
-- [ ] Registro de cambios por dispositivo con confirmación explícita
+- [x] Registro de cambios por dispositivo con confirmación explícita
       (**Guardar** en el origen, **Cargar** en el destino)
-- [ ] Bóveda en archivo con escritura atómica y borradores persistentes
+- [x] Bóveda en archivo con escritura atómica y borradores persistentes
+- [x] Replicación en cadena con autor original (`originDeviceId`/`originSeq`)
+- [x] Preview de borrados/conflictos y resumen por tipo al cargar
 - [ ] Empaquetado Linux: AppImage y `.deb`
 - [ ] Cliente Android sobre Capacitor con acceso SAF
 - [ ] Detección de Syncthing por loopback y guía de emparejamiento

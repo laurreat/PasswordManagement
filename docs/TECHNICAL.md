@@ -98,6 +98,7 @@ PasswordManagement/
 │       ├── vault-errors.ts        Taxonomía de errores
 │       ├── vault-error-messages.ts Claves i18n por código
 │       ├── vault-merge.ts         Importación y conflictos
+│       ├── change-history.ts      Historial cifrado y retención visible
 │       ├── browser-csv.ts         Importación de CSV del navegador
 │       ├── password-generator.ts  Generación con CSPRNG
 │       ├── security-audit.ts      Motor de auditoría

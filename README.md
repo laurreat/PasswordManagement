@@ -19,9 +19,11 @@ Electron.
 - La navegación y las ventanas nuevas están bloqueadas fuera del origen local.
 - No hay auto-actualizador ni comprobación de versiones.
 
-Los datos del usuario nunca salen del equipo: el vault cifrado se guarda en el
-`localStorage` del perfil de Electron, y las exportaciones son archivos que el
-usuario elige dónde guardar.
+Sin sync activado, los datos del usuario no salen del equipo: el vault cifrado
+se guarda como archivo en el perfil de Electron y las exportaciones son archivos
+que el usuario elige dónde guardar. Al activar sync, sólo el sobre cifrado viaja
+por la carpeta que el usuario comparte; la contraseña maestra nunca se
+transmite y cada dispositivo descifra localmente.
 
 ## Características
 
@@ -38,6 +40,9 @@ usuario elige dónde guardar.
 - **Errores tipados del vault**: distingue contraseña incorrecta / datos
   alterados, archivo dañado, versión no soportada y vault ausente.
 - **Resolución de conflictos** al importar vaults de otro dispositivo.
+- **Sincronización opcional** entre dispositivos con una carpeta compartida y
+  Syncthing, sin cuentas ni nube. Cada cambio se **Guarda** en el origen y se
+  **Carga** explícitamente en el destino; sólo viaja el sobre cifrado.
 - **Auto-bloqueo** tras 10 minutos de inactividad.
 - **Cinco idiomas**: inglés, español, portugués, francés y chino.
 - **Temas claro y oscuro**.
