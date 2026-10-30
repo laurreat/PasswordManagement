@@ -1,6 +1,6 @@
 # LocalPass — Sync multiplataforma y plan de releases
 
-> **Estado**: FASE 3 EN CURSO (motor y almacén listos) · **Rama**: `feat/cross-platform-sync`
+> **Estado**: FASE 3.5 CERRADA EN CÓDIGO (T3.11 manual pendiente) · **Rama**: `feat/cross-platform-sync`
 > **Base**: `4f1e20c` (feat/security-hardening)
 
 ## Objetivo
@@ -144,6 +144,63 @@ medias:
 - [x] T3.7 `applyConflictResolution` debe subir `revision` al aplicar la versión
       elegida. Sin eso, el siguiente cambio remoto vuelve a chocar contra una
       revisión que ya cambió de contenido. — `52984f2`
+- [x] T3.8 Replicación en cadena: al cargar un log ajeno, las entradas
+      aplicadas se re-publican en el log propio con `seq` nuevo y conservan
+      `originDeviceId`/`originSeq`. El origen no se reaplica y un peer que ya
+      vio el original lo salta. — `relayAppliedChanges`, `applyChangeLog`.
+- [x] T3.9 Preview antes de cargar cuando el lote tiene borrados o conflictos,
+      con detalle por cuenta, y resumen por tipo (nuevas, modificadas,
+      eliminadas, conflictos) en el toast. — `previewPeerChanges`.
+- [x] T3.10 Baseline de relay: si el baseline propio está vacío y el vault ya
+      tiene cuentas, se regenera para que un peer nuevo pueda reconstruir el
+      estado completo. — `ensureRelayBaseline`.
+- [ ] T3.11 Prueba manual de dos perfiles en una ventana Electron (ciclo
+      Guardar → Cargar → verificar). Los tests cubren el dominio y la cadena de
+      tres dispositivos, pero no la interacción real con el diálogo ni el
+      portapapeles.
+
+## Fase 3.5 — Correcciones de confiabilidad del sync
+
+Auditoría del árbol de trabajo. Tres defectos bloquean la promesa "todo cambio
+confirmado llega a los demás dispositivos". Se corrigen en este orden, con la
+publicación local primero y la remota después.
+
+- [x] T3.12 **Estado real de activación.** `isSyncEnabled` usaba
+      `folder && vault.sync.deviceName`, pero `deviceName` se escribe siempre al
+      crear la bóveda. Al elegir carpeta la UI decía "Activa" y ocultaba
+      "Activar sync", así que `enableSync()` (el que crea el baseline) nunca se
+      ejecutaba. Pasa a depender de `ownLog?.baseline`. `commitDrafts` sólo
+      publica cuando hay baseline; sin él, el commit es estrictamente local.
+      Criterio: elegir carpeta muestra "Solo local" + botón "Activar sync";
+      activar crea el baseline y recién entonces el badge pasa a "Activa".
+      — `b698773`
+
+- [x] T3.13 **Publicación idempotente de borradores.** `commitDrafts` escribía
+      el log antes de guardar la bóveda. Si el guardado fallaba, el cambio ya
+      estaba publicado y el reintento lo volvía a stagear con `changeId` y `seq`
+      nuevos. El `changeId` se deriva del `draftId` (estable) y `commitDraft`
+      reaplica la entrada existente en lugar de duplicarla.
+      Criterio: log escrito + fallo de bóveda + reintento = una sola entrada y
+      el borrador desaparece. — `4c9abae`, `b698773`
+
+- [x] T3.14 **Publicar las mutaciones que no pasan por borradores.** La
+      importación CSV, la remediación de auditoría y la resolución de conflictos
+      escribían la bóveda sin entrada en el log, así que nunca llegaban a los
+      pares. Se añade `publishAccountChanges` al proveedor de sync y se llama
+      después de guardar localmente. Requisitos del modelo: `revision` sube
+      exactamente 1 por edición y las cuentas nuevas nacen en `revision: 1`;
+      `applyPasswordRemediation` y `applyConflictResolution` se ajustan a esa
+      regla y `toAccountEntries` deja de omitir `revision`.
+      Criterio: un cambio de contraseña desde auditoría, una cuenta nueva por
+      CSV y un conflicto resuelto aparecen en el log propio y un peer los
+      carga. Si la escritura del log falla, la bóveda local queda guardada y se
+      avisa que no se publicó. — `688787d`
+
+- [x] T3.15 **Límites documentados.** La importación de una bóveda completa
+      (`importVault`) sigue siendo una migración local: sus revisiones vienen
+      de otro dispositivo y no se publican como cambios. `docs/SYNC.md` lo dice
+      explícitamente para que no se confunda con una edición normal.
+      — `688787d`
 
 ## Criterios de aceptación Fase 0
 
@@ -208,11 +265,11 @@ medias:
   (abrir, crear bóveda, cerrar, reabrir) antes de dar la Fase 2 por cerrada en
   producción.
 
-### Fase 3 (parcial)
+### Fase 3
 
 - `npm run typecheck`: sin errores.
-- `npm test`: 203 tests, 203 pass, 0 fail.
-- Cobertura nueva: `sync-engine` (18) y `sync-store` (12).
+- `npm test`: 218 tests, 218 pass, 0 fail.
+- Cobertura nueva: `sync-engine` (18), `sync-store` (12) y `sync-relay` (7).
 - Motor: crear/actualizar/borrar aplican al vault local y dejan la entrada con
   el `seq` siguiente. Un borrador viejo (base que ya no coincide) se rechaza
   con `sync_invalid_change` en lugar de escribir una versión que el usuario no
@@ -225,15 +282,36 @@ medias:
 - Almacén: el archivo que se escribe no contiene ni el sitio ni la contraseña;
   cada escritura usa sal e IV nuevos; una contraseña equivocada da
   `sync_authentication_failed` y un archivo que no es sobre da `sync_corrupted`.
-- **No verificado**: nada de esto se vio todavía en la UI. Falta T3.3 (sección
-  "Cambios"), que es donde el usuario ejerce Guardar/Cargar.
+- Cadena de tres dispositivos: Windows crea, Android carga y replica, Linux
+  carga desde Android. El cambio llega una sola vez y conserva el autor
+  original. Windows ignora su propio cambio cuando vuelve por Android y Linux
+  no lo duplica si después lee el archivo de Windows directamente.
+- Preview: un lote con borrados o conflictos no se aplica hasta confirmar; el
+  resumen separa nuevas, modificadas, eliminadas y conflictos.
+- **No verificado**: la UI no se probó todavía en una ventana Electron real.
+  Queda T3.11: dos perfiles, Guardar/Cargar y verificación del diálogo.
+
+### Fase 3.5
+
+- `npm run typecheck`: sin errores.
+- `npm test`: 233 tests, 233 pass, 0 fail (226 previos + 7 nuevos).
+- Idempotencia: escribir el log y fallar el guardado de la bóveda, reintentar
+  el mismo borrador deja una sola entrada, con el `changeId` derivado del
+  `draftId`, y el borrador desaparece.
+- Publicación: un update con salto de revisión (+2) o sin campos cambiados se
+  rechaza antes de tocar el log. La resolución de conflicto que conserva la
+  versión local publica una entrada sólo de revisión (`allowEmptyDiff`) para
+  que los pares converjan.
+- Activación: `isSyncEnabled` depende del baseline del log propio; elegir
+  carpeta deja el estado en "Solo local" hasta pulsar **Activar sync**.
+- Import CSV: las cuentas nuevas nacen con `revision: 1` y la importación
+  devuelve los cambios aplicados; los conflictos no se publican.
+- **No verificado**: la UI en una ventana Electron real. T3.11 sigue pendiente.
 
 ## Próximo paso
 
-T3.3: sección "Cambios". Es la primera parte visible del sync: lista con tipo,
-hora y dispositivo de origen, y el botón que dice **Guardar** si el cambio es
-propio o **Cargar** si es ajeno. Antes hace falta T3.5 (elegir carpeta y activar
-sync) para que exista algo que listar.
+T3.11 (prueba manual de la UI) y después Fase 4: AppImage + `.deb` y CI en
+`ubuntu-latest`. Android sigue en Fase 5.
 
 ---
 **Actualizado**: 2026-10-28
