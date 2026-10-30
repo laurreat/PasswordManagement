@@ -93,6 +93,25 @@ empaquetado con electron-builder. El resultado queda en `dist/`:
 Cerrá cualquier instancia de LocalPass o Electron antes de compilar para evitar
 el error `Access is denied` al reemplazar archivos.
 
+### Linux (AppImage y `.deb`)
+
+Los paquetes de Linux deben generarse en una máquina Linux: electron-builder no
+puede cross-compilar AppImage ni `.deb` desde Windows.
+
+```bash
+npm run build:linux
+```
+
+El resultado queda en `dist/`:
+
+- `LocalPass-<version>-x64.deb` — lo instalás con
+  `sudo apt install ./LocalPass-<version>-x64.deb`.
+- `LocalPass-<version>-x64.AppImage` — le das permisos con `chmod +x` y lo
+  ejecutás directamente, sin instalación.
+
+En ambos casos la bóveda cifrada se guarda en `~/.config/localpass/`
+(`vault.enc.json` y los archivos de sync del dispositivo).
+
 ## Comandos
 
 | Comando | Descripción |

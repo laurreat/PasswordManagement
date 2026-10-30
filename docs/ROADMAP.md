@@ -44,7 +44,7 @@
 
 ---
 
-## v1.3.0 — Sync multiplataforma (Fase 3 implementada)
+## v1.3.0 — Sync multiplataforma (Fase 3 implementada, Fase 4 en curso)
 
 ### Alcance
 
@@ -53,7 +53,8 @@
 - [x] Bóveda en archivo con escritura atómica y borradores persistentes
 - [x] Replicación en cadena con autor original (`originDeviceId`/`originSeq`)
 - [x] Preview de borrados/conflictos y resumen por tipo al cargar
-- [ ] Empaquetado Linux: AppImage y `.deb`
+- [x] Empaquetado Linux: objetivos AppImage y `.deb` configurados
+      (build y prueba en distros pendientes)
 - [ ] Cliente Android sobre Capacitor con acceso SAF
 - [ ] Detección de Syncthing por loopback y guía de emparejamiento
 

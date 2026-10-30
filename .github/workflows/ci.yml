@@ -66,3 +66,34 @@ jobs:
           path: dist/*.exe
           if-no-files-found: error
           retention-days: 14
+
+  build-linux:
+    name: Linux build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: verify
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build:linux
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: localpass-linux-${{ github.sha }}
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+          if-no-files-found: error
+          retention-days: 14

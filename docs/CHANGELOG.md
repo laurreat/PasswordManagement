@@ -10,6 +10,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ### Agregado
 
+- **Empaquetado Linux (configuración)**: objetivos AppImage y `.deb` (x64) con
+  electron-builder, ícono de 1024×1024, entrada de escritorio y dependencias del
+  paquete. El build real se ejecuta en Linux; todavía no se generaron artefactos.
+- Script `npm run build:linux`, que encadena export estático, copia del ícono y
+  `electron-builder --linux`.
 - **Historial de cambios por cuenta**: cada creación, edición, borrado,
   importación y conflicto resuelto deja una entrada cifrada dentro del vault,
   con valores antes/después, tipo, hora y dispositivo de origen.
