@@ -13,7 +13,14 @@
 
 import type { AccountEntry, VaultDecrypted, VaultDraft } from '@/lib/types';
 import { applyChange, applyChangeLog, baselineAccounts } from './apply.ts';
-import { appendEntry, createBaseline, createChangeEntry, nextSeq } from './changes.ts';
+import {
+  appendEntry,
+  createBaseline,
+  createChangeEntry,
+  diffFields,
+  fromSnapshot,
+  nextSeq,
+} from './changes.ts';
 import { SyncError } from './errors.ts';
 import type {
   ApplyOutcome,
@@ -27,6 +34,7 @@ export type StageChangeInput = {
   before: AccountEntry | null;
   after: AccountEntry | null;
   createdAt?: string;
+  changeId?: string;
 };
 
 export type StagedChange = {
@@ -60,6 +68,7 @@ export function stageChange(
     before: input.before,
     after: input.after,
     createdAt: input.createdAt,
+    changeId: input.changeId,
   });
 
   const applied = applyChange(vault, entry, entry.createdAt);
@@ -73,22 +82,152 @@ export function stageChange(
 }
 
 /**
+ * Re-publishes the peer entries that actually changed this vault. Without
+ * this, a chain Windows → Android → Linux loses the Windows change at the
+ * Android hop: Linux never reads the Windows file in that topology.
+ *
+ * The copy belongs to this device (new `deviceId` and `seq`) but keeps the
+ * original author in `originDeviceId`/`originSeq`. That prevents the origin
+ * from applying its own change again and prevents a peer that already saw the
+ * original from applying it twice.
+ */
+export function relayAppliedChanges(
+  ownLog: ChangeLogFile,
+  peerLog: ChangeLogFile,
+  outcomes: ApplyOutcome[],
+  createdAt?: string
+): ChangeLogFile {
+  if (ownLog.deviceId === peerLog.deviceId) return ownLog;
+
+  const applied = new Set(
+    outcomes.filter((outcome) => outcome.kind === 'applied').map((outcome) => outcome.changeId)
+  );
+  if (applied.size === 0) return ownLog;
+
+  let next = ownLog;
+  const ordered = [...peerLog.entries].sort((first, second) => first.seq - second.seq);
+
+  for (const entry of ordered) {
+    if (!applied.has(entry.changeId)) continue;
+
+    const relayed: ChangeEntry = {
+      ...createChangeEntry({
+        deviceId: next.deviceId,
+        seq: nextSeq(next),
+        type: entry.type,
+        before: entry.before ? fromSnapshot(entry.before) : null,
+        after: entry.after ? fromSnapshot(entry.after) : null,
+        createdAt: createdAt ?? entry.createdAt,
+      }),
+      originDeviceId: entry.originDeviceId ?? entry.deviceId,
+      originSeq: entry.originSeq ?? entry.seq,
+    };
+
+    next = appendEntry(next, relayed);
+  }
+
+  return next;
+}
+
+/**
+ * A relayed change is only useful to a brand-new peer if this device also
+ * publishes a snapshot. An empty baseline would leave the new peer with the
+ * changes but none of the accounts that existed before them.
+ */
+export function ensureRelayBaseline(
+  log: ChangeLogFile,
+  vault: VaultDecrypted,
+  createdAt?: string
+): ChangeLogFile {
+  if (log.baseline && log.baseline.accounts.length > 0) return log;
+  if (vault.accounts.length === 0) return log;
+  return createBaseline(log, vault.accounts, createdAt);
+}
+
+/**
+ * A local mutation that was already saved to the vault and only needs to be
+ * published. Used by flows that bypass drafts (CSV import, audit remediation,
+ * conflict resolution).
+ */
+export type PublishableChange = {
+  type: ChangeType;
+  before: AccountEntry | null;
+  after: AccountEntry | null;
+  /** Set by conflict resolution: a revision-only update still must travel. */
+  allowEmptyDiff?: boolean;
+};
+
+/**
+ * Turns an already-applied mutation into a log entry. Validation is strict on
+ * purpose: a revision that did not grow by exactly one cannot be replayed as a
+ * change, and publishing it would poison every peer.
+ */
+export function publishAppliedChange(
+  log: ChangeLogFile,
+  input: PublishableChange
+): { log: ChangeLogFile; entry: ChangeEntry } {
+  if (input.type === 'create') {
+    if (input.before !== null || input.after === null) throw new SyncError('sync_invalid_change');
+    if ((input.after.revision ?? 0) !== 1) throw new SyncError('sync_invalid_change');
+  } else if (input.type === 'update') {
+    if (input.before === null || input.after === null) throw new SyncError('sync_invalid_change');
+    if ((input.after.revision ?? 0) !== (input.before.revision ?? 0) + 1) {
+      throw new SyncError('sync_invalid_change');
+    }
+    if (diffFields(input.before, input.after).length === 0 && !input.allowEmptyDiff) {
+      throw new SyncError('sync_invalid_change');
+    }
+  } else if (input.before === null || input.after !== null) {
+    throw new SyncError('sync_invalid_change');
+  }
+
+  const entry = createChangeEntry({
+    deviceId: log.deviceId,
+    seq: nextSeq(log),
+    type: input.type,
+    before: input.before,
+    after: input.after,
+    allowEmptyDiff: input.allowEmptyDiff,
+  });
+
+  return { log: appendEntry(log, entry), entry };
+}
+
+/**
  * Commits a local draft into the vault and appends it to the device log.
  * The committed draft is removed from `vault.drafts`.
+ *
+ * The change id is derived from `draftId`, so a retry after a failed vault
+ * save re-applies the entry that is already published instead of duplicating
+ * it with a new `changeId` and `seq`.
  */
 export function commitDraft(
   log: ChangeLogFile,
   vault: VaultDecrypted,
   draft: VaultDraft
 ): StagedChange {
+  const remainingDrafts = (vault.drafts ?? []).filter((d) => d.draftId !== draft.draftId);
+  const existing = log.entries.find((entry) => entry.changeId === draft.draftId);
+
+  if (existing) {
+    const reapplied = applyChange(vault, existing, existing.createdAt);
+    if (reapplied.outcome.kind !== 'applied') throw new SyncError('sync_invalid_change');
+
+    return {
+      log,
+      entry: existing,
+      vault: { ...reapplied.vault, drafts: remainingDrafts },
+    };
+  }
+
   const staged = stageChange(log, vault, {
     type: draft.type,
     before: draft.before,
     after: draft.after,
     createdAt: draft.createdAt,
+    changeId: draft.draftId,
   });
 
-  const remainingDrafts = (vault.drafts ?? []).filter((d) => d.draftId !== draft.draftId);
   return {
     ...staged,
     vault: {

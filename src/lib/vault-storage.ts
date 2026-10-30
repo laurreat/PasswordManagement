@@ -88,6 +88,33 @@ function assertAccount(value: unknown): asserts value is AccountEntry {
   if (!Array.isArray(value.history)) throw new VaultError('vault_corrupted');
 }
 
+function assertChangeValues(value: unknown): void {
+  if (!isRecord(value)) throw new VaultError('vault_corrupted');
+  if (!isNonEmptyString(value.sitio) || !isNonEmptyString(value.usuario)) {
+    throw new VaultError('vault_corrupted');
+  }
+  if (typeof value.password !== 'string' || typeof value.notas !== 'string') {
+    throw new VaultError('vault_corrupted');
+  }
+}
+
+function assertHistoryEntry(value: unknown): void {
+  if (!isRecord(value)) throw new VaultError('vault_corrupted');
+  if (!isNonEmptyString(value.historyId) || !isNonEmptyString(value.accountId)) {
+    throw new VaultError('vault_corrupted');
+  }
+  if (!isNonEmptyString(value.accountKey) || !isNonEmptyString(value.createdAt)) {
+    throw new VaultError('vault_corrupted');
+  }
+  if (!isNonEmptyString(value.deviceId)) throw new VaultError('vault_corrupted');
+  if (value.type !== 'create' && value.type !== 'update' && value.type !== 'delete') {
+    throw new VaultError('vault_corrupted');
+  }
+  if (value.before !== null) assertChangeValues(value.before);
+  if (value.after !== null) assertChangeValues(value.after);
+  if (!Array.isArray(value.changedFields)) throw new VaultError('vault_corrupted');
+}
+
 function assertVaultShape(value: unknown): asserts value is VaultDecrypted {
   if (!isRecord(value)) throw new VaultError('vault_corrupted');
   if (value.vaultVersion !== VAULT_FORMAT_VERSION) throw new VaultError('vault_unsupported_version');
@@ -97,6 +124,11 @@ function assertVaultShape(value: unknown): asserts value is VaultDecrypted {
   }
 
   value.accounts.forEach(assertAccount);
+
+  if (value.history !== undefined) {
+    if (!Array.isArray(value.history)) throw new VaultError('vault_corrupted');
+    value.history.forEach(assertHistoryEntry);
+  }
 
   (value.conflicts as unknown[]).forEach((conflict) => {
     if (!isRecord(conflict) || !isNonEmptyString(conflict.conflictId) || !isNonEmptyString(conflict.sitio)) {
@@ -170,6 +202,7 @@ export function emptyVault(): VaultDecrypted {
     updatedAt: now,
     accounts: [],
     conflicts: [],
+    history: [],
   };
 }
 

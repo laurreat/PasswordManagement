@@ -27,6 +27,14 @@ export type NewChangeInput = {
   before: AccountEntry | null;
   after: AccountEntry | null;
   createdAt?: string;
+  /** Stable identity for a retried change; defaults to a fresh UUID. */
+  changeId?: string;
+  /**
+   * Allows an update whose tracked fields are unchanged. Only conflict
+   * resolutions use it: the content is already the resolved one, but peers
+   * still need the revision bump to stop diverging.
+   */
+  allowEmptyDiff?: boolean;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -136,11 +144,13 @@ export function createChangeEntry(input: NewChangeInput): ChangeEntry {
   else if (input.type === 'delete') changedFields = ['deleted'];
   else {
     changedFields = diffFields(input.before as AccountEntry, input.after as AccountEntry);
-    if (changedFields.length === 0) throw new SyncError('sync_invalid_change');
+    if (changedFields.length === 0 && !input.allowEmptyDiff) {
+      throw new SyncError('sync_invalid_change');
+    }
   }
 
   return {
-    changeId: globalThis.crypto.randomUUID(),
+    changeId: input.changeId ?? globalThis.crypto.randomUUID(),
     deviceId: input.deviceId,
     seq: input.seq,
     createdAt,
@@ -215,6 +225,15 @@ function assertEntry(value: unknown): asserts value is ChangeEntry {
   if (!isNonNegativeInteger(value.baseRevision)) throw new SyncError('sync_corrupted');
   if (!Array.isArray(value.changedFields) || value.changedFields.some((field) => typeof field !== 'string')) {
     throw new SyncError('sync_corrupted');
+  }
+
+  // Optional relay provenance. Both fields must be present together; a log
+  // written before this field existed simply omits them.
+  if (value.originDeviceId !== undefined || value.originSeq !== undefined) {
+    if (!isNonEmptyString(value.originDeviceId)) throw new SyncError('sync_corrupted');
+    if (!Number.isInteger(value.originSeq) || (value.originSeq as number) < 1) {
+      throw new SyncError('sync_corrupted');
+    }
   }
 
   const before = value.before;

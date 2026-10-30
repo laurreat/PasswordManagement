@@ -184,3 +184,17 @@ test('baselineAccounts exposes the snapshot for a fresh device', () => {
 test('a log without baseline returns null', () => {
   assert.equal(baselineAccounts(emptyChangeLog('device-a', 'Windows')), null);
 });
+
+test('applyChangeLog records applied remote changes in the vault history', () => {
+  const change = entry('create', null, account({ revision: undefined }));
+
+  const first = applyChangeLog(vault(), log([change]), NOW);
+  const second = applyChangeLog(first.vault, log([change]), NOW);
+
+  assert.equal(first.vault.history?.length, 1);
+  assert.equal(first.vault.history?.[0].source, 'remote');
+  assert.equal(first.vault.history?.[0].changeId, change.changeId);
+  assert.deepEqual(first.vault.history?.[0].changedFields, ['created']);
+  assert.equal(first.vault.history?.[0].deviceName, 'Windows');
+  assert.equal(second.vault.history?.length, 1);
+});

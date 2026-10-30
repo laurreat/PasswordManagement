@@ -4,11 +4,14 @@ import assert from 'node:assert/strict';
 import { createChangeEntry, emptyChangeLog } from '../src/lib/sync/changes.ts';
 import {
   adoptBaseline,
+  commitDraft,
   enableSync,
   needsBaseline,
+  publishAppliedChange,
   pullChanges,
   stageChange,
 } from '../src/lib/sync/engine.ts';
+import { createDraft } from '../src/lib/drafts.ts';
 import { SyncError } from '../src/lib/sync/errors.ts';
 import type { ChangeLogFile } from '../src/lib/sync/types.ts';
 import type { AccountEntry, VaultDecrypted } from '../src/lib/types.ts';
@@ -308,4 +311,81 @@ test('needsBaseline is true only for an untouched vault', () => {
   assert.equal(needsBaseline(vault()), true);
   assert.equal(needsBaseline(vault({ accounts: [account()] })), false);
   assert.equal(needsBaseline(vault({ sync: { deviceName: 'X', appliedSeq: { 'device-b': 2 } } })), false);
+});
+
+test('committing a draft twice after a failed vault save keeps one entry', () => {
+  const draft = createDraft({
+    type: 'create',
+    before: null,
+    after: account({ id: 'draft-1', revision: 0 }),
+  });
+  const baseVault = vault({ drafts: [draft] });
+
+  const first = commitDraft(log(), baseVault, draft);
+  assert.equal(first.log.entries.length, 1);
+  assert.equal(first.entry.changeId, draft.draftId);
+  assert.equal(first.vault.accounts.length, 1);
+  assert.deepEqual(first.vault.drafts, []);
+
+  // The log write succeeded but the vault save failed: the retry starts from
+  // the original vault and the log that already holds the entry.
+  const retried = commitDraft(first.log, baseVault, draft);
+
+  assert.equal(retried.log.entries.length, 1);
+  assert.equal(retried.log.entries[0].changeId, draft.draftId);
+  assert.equal(retried.entry.changeId, draft.draftId);
+  assert.equal(retried.vault.accounts.length, 1);
+  assert.equal(retried.vault.accounts[0].revision, 1);
+  assert.deepEqual(retried.vault.drafts, []);
+});
+
+test('publishAppliedChange appends one entry for a valid update', () => {
+  const before = account({ revision: 2 });
+  const after = account({ revision: 3, password: 'rotated' });
+
+  const result = publishAppliedChange(log(), { type: 'update', before, after });
+
+  assert.equal(result.log.entries.length, 1);
+  assert.equal(result.entry.seq, 1);
+  assert.equal(result.entry.type, 'update');
+  assert.equal(result.entry.baseRevision, 2);
+  assert.equal(result.entry.after?.revision, 3);
+  assert.deepEqual(result.entry.changedFields, ['password']);
+});
+
+test('publishAppliedChange rejects an update that skipped a revision', () => {
+  assertSyncError(
+    () =>
+      publishAppliedChange(log(), {
+        type: 'update',
+        before: account({ revision: 2 }),
+        after: account({ revision: 4, password: 'rotated' }),
+      }),
+    'sync_invalid_change'
+  );
+});
+
+test('publishAppliedChange rejects a no-op update', () => {
+  assertSyncError(
+    () =>
+      publishAppliedChange(log(), {
+        type: 'update',
+        before: account({ revision: 2 }),
+        after: account({ revision: 3 }),
+      }),
+    'sync_invalid_change'
+  );
+});
+
+test('publishAppliedChange accepts a revision-only resolution when allowed', () => {
+  const result = publishAppliedChange(log(), {
+    type: 'update',
+    before: account({ revision: 2 }),
+    after: account({ revision: 3 }),
+    allowEmptyDiff: true,
+  });
+
+  assert.equal(result.log.entries.length, 1);
+  assert.deepEqual(result.entry.changedFields, []);
+  assert.equal(result.entry.after?.revision, 3);
 });

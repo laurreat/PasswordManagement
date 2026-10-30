@@ -8,6 +8,7 @@
 
 import type { AccountEntry, ConflictEntry, VaultDecrypted } from '@/lib/types';
 import { accountKey } from '../vault-merge.ts';
+import { accountChangeFromEntry, appendAccountChange } from '../change-history.ts';
 import { fromSnapshot } from './changes.ts';
 import type { AccountSnapshot, ApplyOutcome, ChangeEntry, ChangeLogFile } from './types.ts';
 
@@ -115,10 +116,65 @@ export function applyChange(
   };
 }
 
+/** Counts what a load will do, without mutating the vault. */
+export type ChangeSummary = {
+  total: number;
+  applied: number;
+  creates: number;
+  updates: number;
+  deletes: number;
+  conflicts: number;
+  skipped: number;
+};
+
+/**
+ * Summarizes a log against the outcomes that applying it produced. Only
+ * applied entries count as creates/updates/deletes; conflicts stay separate
+ * because the user still has to decide on them.
+ */
+export function summarizeChangeLog(
+  log: ChangeLogFile,
+  outcomes: ApplyOutcome[]
+): ChangeSummary {
+  const entries = new Map(log.entries.map((entry) => [entry.changeId, entry]));
+  const summary: ChangeSummary = {
+    total: outcomes.length,
+    applied: 0,
+    creates: 0,
+    updates: 0,
+    deletes: 0,
+    conflicts: 0,
+    skipped: 0,
+  };
+
+  for (const outcome of outcomes) {
+    if (outcome.kind === 'conflict') {
+      summary.conflicts += 1;
+      continue;
+    }
+    if (outcome.kind === 'skipped') {
+      summary.skipped += 1;
+      continue;
+    }
+
+    summary.applied += 1;
+    const type = entries.get(outcome.changeId)?.type;
+    if (type === 'create') summary.creates += 1;
+    else if (type === 'update') summary.updates += 1;
+    else if (type === 'delete') summary.deletes += 1;
+  }
+
+  return summary;
+}
+
 /**
  * Applies every entry a peer has published since our last cursor. The cursor
  * advances once an entry is processed — applied, conflicted or skipped — so
  * retrying the same file is a no-op.
+ *
+ * Relayed entries carry their original author. That lets the origin ignore
+ * its own change coming back and lets a peer that already applied the
+ * original skip the copy.
  */
 export function applyChangeLog(
   vault: VaultDecrypted,
@@ -153,10 +209,49 @@ export function applyChangeLog(
       continue;
     }
 
+    const originDeviceId = entry.originDeviceId;
+    const originSeq = entry.originSeq;
+
+    // Our own change came back through a relay. Apply nothing, but remember
+    // that this relay slot was already consumed.
+    if (originDeviceId === vault.deviceId && originSeq !== undefined) {
+      outcomes.push({
+        changeId: entry.changeId,
+        accountKey: entry.accountKey,
+        kind: 'skipped',
+        reason: 'own_device',
+      });
+      appliedSeq[entry.deviceId] = entry.seq;
+      continue;
+    }
+
+    // The original was already applied directly, or through another relay.
+    if (originDeviceId && originSeq !== undefined && originSeq <= (appliedSeq[originDeviceId] ?? 0)) {
+      outcomes.push({
+        changeId: entry.changeId,
+        accountKey: entry.accountKey,
+        kind: 'skipped',
+        reason: 'already_applied',
+      });
+      appliedSeq[entry.deviceId] = entry.seq;
+      continue;
+    }
+
     const result = applyChange(current, entry, now);
-    current = result.vault;
+    current =
+      result.outcome.kind === 'applied'
+        ? appendAccountChange(
+            result.vault,
+            accountChangeFromEntry(entry, 'remote', log.deviceName)
+          )
+        : result.vault;
     outcomes.push(result.outcome);
     appliedSeq[entry.deviceId] = Math.max(cursor, entry.seq);
+
+    if (originDeviceId && originSeq !== undefined) {
+      const originCursor = appliedSeq[originDeviceId] ?? 0;
+      appliedSeq[originDeviceId] = Math.max(originCursor, originSeq);
+    }
   }
 
   return {

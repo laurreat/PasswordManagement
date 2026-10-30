@@ -37,6 +37,13 @@ export type ChangeEntry = {
   before: AccountSnapshot | null;
   after: AccountSnapshot | null;
   changedFields: string[];
+  /**
+   * Present only on entries that re-publish a peer change. They let a device
+   * recognize its own change coming back through a relay and let a peer that
+   * already applied the original skip the copy.
+   */
+  originDeviceId?: string;
+  originSeq?: number;
 };
 
 /**

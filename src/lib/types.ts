@@ -50,6 +50,32 @@ export type VaultDraft = {
   updatedAt: string;
 };
 
+export type AccountChangeType = 'create' | 'update' | 'delete';
+
+export type AccountChangeSource = 'local' | 'remote' | 'import';
+
+/** Fields kept in a history snapshot. Password history itself is not copied. */
+export type AccountChangeValues = Pick<
+  AccountEntry,
+  'sitio' | 'usuario' | 'password' | 'notas'
+>;
+
+export type AccountChangeRecord = {
+  historyId: string;
+  /** Set when the change also exists in a sync log, so both can be deduped. */
+  changeId?: string;
+  accountId: string;
+  accountKey: string;
+  type: AccountChangeType;
+  before: AccountChangeValues | null;
+  after: AccountChangeValues | null;
+  changedFields: string[];
+  createdAt: string;
+  deviceId: string;
+  deviceName?: string;
+  source: AccountChangeSource;
+};
+
 export type VaultDecrypted = {
   vaultVersion: "1.0";
   deviceId: string;
@@ -58,6 +84,11 @@ export type VaultDecrypted = {
   accounts: AccountEntry[];
   conflicts: ConflictEntry[];
   drafts?: VaultDraft[];
+  /**
+   * Encrypted, device-local account history. Entries older than three days
+   * are hidden in the UI, never deleted: traceability is the whole point.
+   */
+  history?: AccountChangeRecord[];
   /** Device-local sync bookkeeping. Never shared with peers. */
   sync?: VaultSyncState;
 };
