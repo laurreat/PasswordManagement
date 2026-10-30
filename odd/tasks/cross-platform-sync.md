@@ -1,6 +1,6 @@
 # LocalPass — Sync multiplataforma y plan de releases
 
-> **Estado**: FASE 3.5 CERRADA EN CÓDIGO (T3.11 manual pendiente) · **Rama**: `feat/cross-platform-sync`
+> **Estado**: FASE 4 EN CURSO (T4.4 Linux real y CI bloqueado por facturación) · **Rama**: `feat/cross-platform-sync`
 > **Base**: `4f1e20c` (feat/security-hardening)
 
 ## Objetivo
@@ -202,6 +202,51 @@ publicación local primero y la remota después.
       explícitamente para que no se confunda con una edición normal.
       — `688787d`
 
+## Tareas Fase 4 (empaquetado Linux)
+
+El empaquetado de Windows ya existe (`nsis` + `portable`). Falta Linux, con la
+misma app y el mismo formato de bóveda: no hay ramas de código por plataforma,
+sólo configuración de empaquetado y una ruta de datos distinta que Electron ya
+resuelve (`~/.config/localpass`).
+
+- [x] T4.1 **Objetivos de build Linux** en `package.json`: `build.linux` con
+      `AppImage` y `deb` (x64), `category`, `synopsis`, `maintainer` y el ícono
+      de 1024×1024 que ya existe. Scripts `build:linux` y `build:electron:linux`
+      sin tocar los de Windows. Criterio: `electron-builder --linux dir` genera
+      `dist/linux-unpacked` con el binario y el `resources/app.asar` completo.
+      — `f51a4fe`. Verificado en Windows: `dist/linux-unpacked/localpass`,
+      `resources/app.asar` y `app.asar.unpacked/out/index.html` presentes.
+
+- [x] T4.2 **Job de CI Linux** en `.github/workflows/ci.yml`: `ubuntu-latest`,
+      `needs: verify`, `npm ci` + `npm run build:linux`, y subida de
+      `dist/*.AppImage` y `dist/*.deb` como artefactos. Criterio: YAML válido y
+      job dependiente de `verify`; la ejecución real queda pendiente del
+      desbloqueo de facturación (ver T4.5). — `f51a4fe`
+
+- [x] T4.3 **Documentación**: `README.md` con la sección de instalación Linux,
+      `docs/ROADMAP.md` marcando el empaquetado como configurado y
+      `docs/CHANGELOG.md` con la entrada correspondiente. — `f51a4fe`
+
+- [ ] T4.4 **Verificación en Linux real** (en la máquina Linux del usuario):
+      `npm ci && npm run build:linux`, instalar el `.deb` y ejecutar el
+      AppImage. Criterio: la bóveda se crea en `~/.config/localpass/vault.enc.json`
+      con permisos `0600`, se puede crear/editar una cuenta y el ciclo
+      Guardar/Cargar funciona contra otra instancia.
+      Distros: Ubuntu 24.04, Debian 12 y Fedora. Ubuntu 24.04 primero porque la
+      restricción de *user namespaces* de AppArmor es el punto donde los
+      AppImage de Electron suelen romper; si falla ahí, el `.deb` necesita un
+      perfil AppArmor y el AppImage una nota en la documentación. En la misma
+      pasada, confirmar que `apt install ./LocalPass-<version>-x64.deb` resuelve
+      las dependencias en Ubuntu 24.04 (`libgtk-3-0` pasó a `libgtk-3-0t64` con
+      la transición t64) y en Debian 12.
+
+- [ ] T4.5 **Bloqueo externo registrado**: GitHub Actions rechaza los runs con
+      *"The job was not started because your account is locked due to a billing
+      issue"*. Ningún job de CI se ejecutó nunca; el único run existente
+      (`f65aac4`) falla sin pasos. Se destraba desde la configuración de
+      facturación de la cuenta; hasta entonces todo el CI es configuración no
+      verificada.
+
 ## Criterios de aceptación Fase 0
 
 1. `LICENSE` presenta GPL-3.0-or-later y `package.json` lo declara.
@@ -308,10 +353,29 @@ publicación local primero y la remota después.
   devuelve los cambios aplicados; los conflictos no se publican.
 - **No verificado**: la UI en una ventana Electron real. T3.11 sigue pendiente.
 
+### Fase 4
+
+- `npm run typecheck`: sin errores.
+- `npm test`: 233 tests, 233 pass, 0 fail.
+- `electron-builder --linux dir` sobre Windows: genera `dist/linux-unpacked` con
+  `localpass`, `resources/app.asar` y el export estático en
+  `app.asar.unpacked/out/`. Valida la configuración y el árbol de archivos, no
+  el empaquetado final: AppImage y `.deb` requieren Linux.
+- `.github/workflows/ci.yml` parsea como YAML válido y el job `build-linux`
+  depende de `verify`.
+- **No verificado**: ningún job de CI se ejecutó nunca. GitHub Actions responde
+  *"The job was not started because your account is locked due to a billing
+  issue"*: el run de `f65aac4` falla sin pasos y el push de `b9e7f5d` no generó
+  run. Hasta destrabar la facturación, todo el CI es configuración sin ejecutar.
+- **No verificado**: artefactos `.AppImage`/`.deb`, instalación y ejecución en
+  Linux. Queda T4.4 en la máquina Linux del usuario.
+
 ## Próximo paso
 
-T3.11 (prueba manual de la UI) y después Fase 4: AppImage + `.deb` y CI en
-`ubuntu-latest`. Android sigue en Fase 5.
+T4.4: generar los paquetes en Linux (`npm ci && npm run build:linux`) y probar
+el `.deb` y el AppImage en Ubuntu 24.04, Debian 12 y Fedora. En paralelo,
+destrabar la facturación de GitHub Actions para que el CI corra por primera vez
+y cerrar T3.11 (prueba manual de la UI en Electron). Android sigue en Fase 5.
 
 ---
-**Actualizado**: 2026-10-28
+**Actualizado**: 2026-10-29
