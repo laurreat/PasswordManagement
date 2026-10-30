@@ -6,7 +6,8 @@ import { decryptVaultFile, encryptVault, buildExportPackage, emptyVault, parseVa
 import { toVaultErrorCode, type VaultErrorCode } from '@/lib/vault-errors';
 import { createVaultStore, type VaultStore } from '@/lib/vault-store';
 import { suggestDeviceName, withDeviceName } from '@/lib/sync/device';
-import { dedupeAccounts, mergeImportedVault } from '@/lib/vault-merge';
+import { accountKey, dedupeAccounts, mergeImportedVault } from '@/lib/vault-merge';
+import { appendAccountChange, createAccountChange } from '@/lib/change-history';
 import { toast } from '@/hooks/use-toast';
 import { useUISettings } from '@/hooks/use-ui-settings';
 
@@ -200,7 +201,29 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     const merged = mergeImportedVault(vault, importedVault);
-    await saveVault(merged, masterPassword as string);
+    const beforeByKey = new Map(vault.accounts.map((account) => [accountKey(account), account]));
+
+    let withHistory = merged;
+    for (const account of merged.accounts) {
+      const before = beforeByKey.get(accountKey(account));
+      if (before && before.updatedAt === account.updatedAt && before.password === account.password) {
+        continue;
+      }
+
+      withHistory = appendAccountChange(
+        withHistory,
+        createAccountChange({
+          type: before ? 'update' : 'create',
+          before: before ?? null,
+          after: account,
+          deviceId: vault.deviceId,
+          deviceName: vault.sync?.deviceName || undefined,
+          source: 'import',
+        })
+      );
+    }
+
+    await saveVault(withHistory, masterPassword as string);
     toast({
       title: t('conflicts.synced_title'),
       description: `${merged.accounts.length} ${t('form.accounts_imported')}`,
