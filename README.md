@@ -1,6 +1,7 @@
-# LocalPass — Gestor de contraseñas local (escritorio)
+# LocalPass — Gestor de contraseñas local (escritorio y Android)
 
-LocalPass es un gestor de contraseñas para Windows que funciona **sin conexión**.
+LocalPass es un gestor de contraseñas que funciona **sin conexión** en Windows,
+Linux y Android.
 No hay servidor, no hay cuenta, no hay telemetría y no hay ningún servicio
 remoto: la aplicación no necesita internet en ningún momento, ni siquiera la
 primera vez.
@@ -57,6 +58,7 @@ transmite y cada dispositivo descifra localmente.
 | TypeScript | 5.7 |
 | Tailwind CSS | 3.4 |
 | electron-builder | 26.18.0 |
+| Capacitor (Android) | 8.6.0 |
 | Web Crypto API | nativa |
 
 Ni Next.js ni Electron publican versiones LTS formales. Las versiones indicadas
@@ -67,6 +69,8 @@ son las últimas estables disponibles al 28 de octubre de 2026.
 - Node.js **22.12 o superior** (lo exige Electron 45; Next.js 16 pide 20.9+).
 - npm.
 - Windows x64 para generar el instalador y el portable.
+- Para el APK: JDK 21 y Android SDK con platform 36 y build-tools 36
+  (`ANDROID_HOME` configurado).
 
 ## Empezar
 
@@ -112,6 +116,28 @@ El resultado queda en `dist/`:
 En ambos casos la bóveda cifrada se guarda en `~/.config/localpass/`
 (`vault.enc.json` y los archivos de sync del dispositivo).
 
+### Android (APK)
+
+La app de Android es el mismo renderer y el mismo formato de bóveda, envuelto
+con Capacitor. Necesitás JDK 21 y el Android SDK (platform 36 y build-tools 36)
+con `ANDROID_HOME` apuntando al SDK. Android Studio los instala; también se
+puede usar `cmdline-tools` sin interfaz gráfica.
+
+```bash
+npm run android:sync
+cd android
+./gradlew assembleDebug     # en Windows: gradlew.bat assembleDebug
+```
+
+El APK queda en `android/app/build/outputs/apk/debug/app-debug.apk` y se
+instala con `adb install -r <ruta>`.
+
+La carpeta de sync se elige con el selector del sistema (Storage Access
+Framework) y el permiso sobrevive a los reinicios. La bóveda vive en el
+directorio privado de la app y queda excluida de las copias de seguridad
+(`allowBackup="false"` más reglas de extracción vacías). El APK de release y la
+firma son Fase 6.
+
 ## Comandos
 
 | Comando | Descripción |
@@ -121,6 +147,8 @@ En ambos casos la bóveda cifrada se guarda en `~/.config/localpass/`
 | `npm run build` | Build completo (Next.js + electron-builder) |
 | `npm run build:next` | Solo el export estático en `out/` |
 | `npm run build:electron` | Solo el empaquetado con electron-builder |
+| `npm run android:sync` | Build web y copia a `android/` |
+| `npm run android:open` | Abre el proyecto Android en Android Studio |
 | `npm run typecheck` | Verificación de tipos |
 | `npm test` | Tests unitarios (`node:test`) |
 

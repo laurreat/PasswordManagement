@@ -177,6 +177,24 @@ aplique después los cambios replicados, sin duplicados ni conflictos falsos.
 - Salt e IV nuevos en cada escritura.
 - Escritura atómica: `.tmp` + `rename`, con `.bak` de la versión anterior.
 
+### 5.1 Ruta de archivo y content URI
+
+En Windows y Linux la carpeta de sync es una ruta real y el proceso principal
+escribe con `.tmp` + `rename` + `.bak`. En Android no existe una ruta
+equivalente: el usuario elige la carpeta con el Storage Access Framework y la
+app recibe un *content URI* que conserva el permiso entre reinicios.
+
+Consecuencias prácticas:
+
+- La carpeta se elige una vez. Si el usuario cancela el selector, se mantiene la
+  anterior, igual que en el diálogo de Electron.
+- No hay `.bak`: el proveedor puede no soportar renombrar. La escritura usa un
+  archivo temporal y, si el rename falla, reescribe en el lugar.
+- Sin permiso de almacenamiento amplio: la app sólo ve el árbol que el usuario
+  autorizó.
+- Sigue siendo un dispositivo, un log. Dos copias de la app en el mismo teléfono
+  no son un caso soportado.
+
 ---
 
 ## 6. Interfaz

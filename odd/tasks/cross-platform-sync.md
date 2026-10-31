@@ -247,6 +247,85 @@ resuelve (`~/.config/localpass`).
       facturación de la cuenta; hasta entonces todo el CI es configuración no
       verificada.
 
+## Tareas Fase 5 (Android)
+
+Prioridad fijada por el usuario el 2026-10-30: **Windows + Android primero,
+Linux al final**. T4.4 queda en espera y el orden de las fases 5 y 6 no cambia.
+
+El objetivo no es una app Android distinta: es el mismo renderer, el mismo
+formato de bóveda `1.0` y el mismo contrato `LocalPassBridge`. En Android no hay
+preload de Electron, así que el puente lo construye un plugin nativo y la
+carpeta de sync la elige el usuario con el Storage Access Framework, porque es
+la única forma portátil de compartir un directorio con otra app (Syncthing) sin
+pedir permiso de almacenamiento amplio.
+
+- [x] T5.1 **Shell Capacitor**: `@capacitor/core|android|filesystem|preferences|clipboard|app`
+      y `@capacitor/cli`, `capacitor.config.ts` con `appId com.localpass.app` y
+      `webDir out`, `npx cap add android`. Criterio: `android/` con
+      `build.gradle`, `settings.gradle`, `gradlew` y `AndroidManifest.xml`
+      válidos; minSdk 24, compileSdk 36. Verificado: proyecto generado con esas
+      versiones.
+
+- [x] T5.2 **Plugin nativo `LocalPassStorage`**
+      (`android/app/src/main/java/com/localpass/app/LocalPassStoragePlugin.java`):
+      bóveda y `settings.json` en el directorio privado de la app con escritura
+      atómica (temporal + `fsync` + rename) y permisos `0600`; carpeta de sync
+      vía SAF con `takePersistableUriPermission`; `syncList`/`syncRead`/
+      `syncWrite`/`syncRemove` con el patrón `changes-<deviceId>.enc.json` y el
+      mismo tope de 5 MB que `electron/storage.js`; `clipboardCopyTemp` con TTL
+      acotado a 5–120 s. Criterio: cada método de `LocalPassBridge` tiene su
+      contraparte y la validación de payload replica la del escritorio
+      (JSON objeto, `deviceId` con `^[A-Za-z0-9_-]{1,64}$`). Registrado en
+      `MainActivity` antes de `super.onCreate`.
+
+- [x] T5.3 **Puente del renderer**: `src/lib/capacitor-bridge.ts` adapta el
+      plugin a `LocalPassBridge` (incluido el caso "el usuario cancela el
+      selector" → devuelve la carpeta anterior, igual que el diálogo de
+      Electron) y `src/lib/capacitor-boot.ts` instala `window.localpass` sólo
+      cuando `Capacitor.isNativePlatform()`, sin pisar un puente existente.
+      Importado como primer efecto en `src/app/page.tsx`. Criterio:
+      `vault-store` y `sync-store` no cambian una línea y siguen eligiendo
+      archivo cuando hay puente.
+
+- [x] T5.4 **Endurecimiento del backup**: `android:allowBackup="false"`,
+      `fullBackupContent="false"`, `dataExtractionRules` con todos los dominios
+      excluidos (el *device transfer* de Android 12+ ignora `allowBackup`) y
+      `usesCleartextTraffic="false"`. Criterio: ninguna copia automática puede
+      sacar la bóveda del dispositivo sin que el usuario lo pida. Sin permiso
+      `INTERNET`: Capacitor sirve el bundle con `WebViewLocalServer`
+      (`https://localhost` interceptado en proceso), así que el SO impide abrir
+      sockets en vez de confiar en que el código no lo haga.
+
+- [x] T5.5 **Compilar el APK debug**. Toolchain portable en `%TEMP%\lp-android`
+      (JDK 21 Temurin + cmdline-tools + platform-36 + build-tools 36) porque la
+      máquina no tiene JDK ni Android Studio. Criterio: `gradlew assembleDebug`
+      termina sin errores y produce `android/app/build/outputs/apk/debug/`.
+      Verificado: `app-debug.apk` de 4.5 MB, `versionName 1.1.0`, minSdk 24,
+      targetSdk 36 y `LocalPassStoragePlugin` presente en el dex.
+
+- [ ] T5.6 **Prueba en dispositivo real**: instalar el APK, crear la bóveda,
+      cerrar y reabrir la app (la bóveda debe seguir), elegir una carpeta SAF
+      observada por Syncthing, activar sync, **Guardar** en Android, **Cargar**
+      en Windows y el camino inverso. Criterio: el ciclo funciona en los dos
+      sentidos y la bóveda sobrevive a un reinicio de la app y del teléfono.
+
+- [ ] T5.7 **Documentación Android**: sección de instalación en `README.md`
+      (requisitos, SAF + Syncthing, por qué no hay backup automático),
+      `docs/SYNC.md` con la diferencia entre ruta de archivo (escritorio) y
+      content URI (Android), y entrada en `docs/CHANGELOG.md`. Criterio: un
+      usuario puede configurar el sync Android ↔ Windows sin leer el código.
+
+- [ ] T5.8 **CI Android** (evaluar): job que compile el APK debug en cada push
+      con `ubuntu-latest` + `android-actions/setup-android`. Criterio: job verde
+      o decisión registrada de no añadirlo (el APK de release y la firma son
+      Fase 6).
+
+- [ ] T5.9 **Iconos y splash propios**: reemplazar los recursos por defecto de
+      Capacitor (`mipmap-*`, `drawable/splash.png`) por el ícono de
+      `build/icon.png`, en todas las densidades y con *adaptive icon* en
+      `mipmap-anydpi-v26`. Criterio: el lanzador muestra el ícono de LocalPass,
+      no el de Capacitor, y el splash mantiene el fondo del tema.
+
 ## Criterios de aceptación Fase 0
 
 1. `LICENSE` presenta GPL-3.0-or-later y `package.json` lo declara.
@@ -363,19 +442,47 @@ resuelve (`~/.config/localpass`).
   el empaquetado final: AppImage y `.deb` requieren Linux.
 - `.github/workflows/ci.yml` parsea como YAML válido y el job `build-linux`
   depende de `verify`.
-- **No verificado**: ningún job de CI se ejecutó nunca. GitHub Actions responde
-  *"The job was not started because your account is locked due to a billing
-  issue"*: el run de `f65aac4` falla sin pasos y el push de `b9e7f5d` no generó
-  run. Hasta destrabar la facturación, todo el CI es configuración sin ejecutar.
+- **CI ejecutado** (destrabada la facturación): `verify` verde en Ubuntu con
+  Node 22; `build-windows` y `build-linux` fallaban en el paso de empaquetado.
+  Causa real, leída de la anotación del run `41167181605`:
+  `GitHub Personal Access Token is not set, neither programmatically, nor using
+  env "GH_TOKEN"`. electron-builder 26 intenta **publicar** cuando detecta un
+  entorno de CI, y sin token aborta antes de terminar el empaquetado. En local
+  nunca se reprodujo porque no hay entorno CI. Corregido con `--publish never`
+  en `build:electron` y `build:electron:linux`: el proyecto no publica desde el
+  build, y el flag lo hace explícito en vez de depender del entorno.
+- Se descartaron por reproducción local: clon limpio + `npm ci` + `npm run
+  build`, `next build` con Node v22.23.4, `next build` con `CI=true` y
+  electron-builder con caché vacío (descarga NSIS y genera los dos
+  instaladores). Ninguna de esas era la causa.
 - **No verificado**: artefactos `.AppImage`/`.deb`, instalación y ejecución en
   Linux. Queda T4.4 en la máquina Linux del usuario.
 
+### Fase 5
+
+- `npm run typecheck`: sin errores con `capacitor-bridge.ts`, `capacitor-boot.ts`
+  y el import de efecto en `src/app/page.tsx`.
+- `npm test`: 233 tests, 233 pass, 0 fail (el renderer no cambia de
+  comportamiento sin plataforma nativa).
+- `android/` generado por `npx cap add android`: minSdk 24, compileSdk 36,
+  targetSdk 36, Java 21.
+- **APK compilado**: `gradlew assembleDebug` (Gradle 8.14.3, AGP 8.13.0, JDK 21)
+  genera `android/app/build/outputs/apk/debug/app-debug.apk` (4.5 MB). Del
+  paquete, no del fuente: `com.localpass.app`, `versionName 1.1.0`, minSdk 24,
+  targetSdk 36, `allowBackup=false`, `fullBackupContent=false`,
+  `usesCleartextTraffic=false`, `dataExtractionRules` presente, **sin permiso
+  `INTERNET`** y `LocalPassStoragePlugin` en el dex.
+- **No verificado**: la prueba en dispositivo (T5.6) y el ciclo Guardar/Cargar
+  Android ↔ Windows.
+
 ## Próximo paso
 
-T4.4: generar los paquetes en Linux (`npm ci && npm run build:linux`) y probar
-el `.deb` y el AppImage en Ubuntu 24.04, Debian 12 y Fedora. En paralelo,
-destrabar la facturación de GitHub Actions para que el CI corra por primera vez
-y cerrar T3.11 (prueba manual de la UI en Electron). Android sigue en Fase 5.
+Compilar el APK debug con el toolchain portable (T5.5), corregir los errores de
+compilación Java y después probar en el teléfono (T5.6). En paralelo, conseguir
+el log del job **Windows build** del run `41007216989` para cerrar el fallo de
+electron-builder: `verify` ya pasa en Ubuntu, así que el código está sano y el
+problema está en el entorno del runner. T4.4 (Linux real) queda al final, por
+decisión del usuario.
 
 ---
-**Actualizado**: 2026-10-29
+**Actualizado**: 2026-10-30

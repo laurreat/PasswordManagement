@@ -6,6 +6,18 @@ import { useVault } from '@/hooks/use-vault';
 import { useUISettings } from '@/hooks/use-ui-settings';
 import type { AccountChangeRecord, VaultDraft } from '@/lib/types';
 import { isHistoryHidden, splitHistoryByAge } from '@/lib/change-history';
+
+/**
+ * On Android the sync folder is a SAF content URI
+ * (`content://…/tree/primary%3ASync`), not a path. Showing the raw URI in a
+ * one-line input is noise, so the last segment is used as a label and the
+ * full value stays in the tooltip.
+ */
+function folderLabel(folder: string): string {
+  const decoded = decodeURIComponent(folder.replace(/[\\/]+$/, ''));
+  const parts = decoded.split(/[\\/]/).filter(Boolean);
+  return parts[parts.length - 1] || folder;
+}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -194,7 +206,8 @@ export const ChangesView: React.FC = () => {
               <label className="text-xs font-medium text-muted-foreground">{t('sync.folder')}</label>
               <div className="flex gap-2">
                 <Input
-                  value={folder || t('sync.folder_none')}
+                  value={folder ? folderLabel(folder) : t('sync.folder_none')}
+                  title={folder ?? undefined}
                   readOnly
                   className="text-xs bg-muted/50 cursor-default truncate font-mono"
                 />
