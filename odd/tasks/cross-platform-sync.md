@@ -501,6 +501,30 @@ pedir permiso de almacenamiento amplio.
 - **No verificado**: la prueba en dispositivo (T5.6) y el ciclo Guardar/Cargar
   Android ↔ Windows.
 
+### Cierre de ramas y entrega por versión (`dca9d97`)
+
+- **Una sola rama**: `main` avanzó por fast-forward hasta `9aea07a` (sin merge
+  commit) y se borraron `feat/cross-platform-sync` y
+  `feat/security-hardening`, local y remoto, después de comprobar con
+  `git merge-base --is-ancestor` que su tip era alcanzable. El remoto quedó con
+  una única rama.
+- **Artefactos por versión**: `dist/` lo borra electron-builder en cada build y
+  mezclaba entregables con intermedios, así que se agregó
+  `scripts/collect-release.mjs` (`npm run release:collect`), que copia solo los
+  archivos de primer nivel de `dist/` a `releases/<versión>/<plataforma>/` y
+  escribe `MANIFEST.txt` con SHA256, tamaño y commit. `releases/` está en
+  `.gitignore`: son binarios reconstruibles.
+  - Bug detectado y corregido en la primera corrida: el recorrido recursivo
+    copiaba `win-unpacked/LocalPass.exe` y `elevate.exe` como si fueran
+    entregables. Ahora usa `topLevelFiles()`.
+- **Limpieza**: se borraron 633 MB de intermedios (`win-unpacked/`,
+  `linux-unpacked/`, `.icon-ico`), `builder-debug.yml`, el `latest.yml` vacío y
+  el `.blockmap`; después se eliminó `dist/` entero (222 MB) porque los dos
+  instaladores ya estaban verificados por SHA256 en `releases/1.1.0/windows/`.
+  También se borró `build/preview-sheet.png`, sin referencias en el repo.
+- **Verificación**: `npm run typecheck` y `npm test` (233/233) en verde después
+  del cambio; CI de `9aea07a` (run `41169662406`) en success en los tres jobs.
+
 ## Próximo paso
 
 Probar el APK en el teléfono (T5.6): crear la bóveda, cerrar y reabrir la app,
