@@ -58,7 +58,26 @@ jobs:
         run: npm ci
 
       - name: Build installers
-        run: npm run build
+        shell: pwsh
+        run: |
+          # Keep the full output and turn the failure into an annotation: job
+          # logs require an authenticated download, annotations do not.
+          # cmd is used on purpose: `2>&1` inside PowerShell turns npm's stderr
+          # into a terminating NativeCommandError because GitHub sets
+          # $ErrorActionPreference = 'stop'.
+          cmd /c "npm run build > build.log 2>&1"
+          $status = $LASTEXITCODE
+          if (Test-Path build.log) { Get-Content build.log -Tail 30 }
+          if ($status -ne 0) {
+            if (-not (Test-Path build.log)) { Write-Host "::error::npm run build failed without a log"; exit $status }
+            $lines = Get-Content build.log |
+              Where-Object { $_ -match 'error|Error|failed|Cannot|cannot|⨯' } |
+              Select-Object -Last 8
+            if (-not $lines) { $lines = Get-Content build.log -Tail 8 }
+            $message = ($lines -join ' | ').Replace('%', '%25')
+            Write-Host "::error file=.github/workflows/ci.yml::$message"
+            exit $status
+          }
 
       - name: Upload installers
         uses: actions/upload-artifact@v4
@@ -87,7 +106,22 @@ jobs:
         run: npm ci
 
       - name: Build packages
-        run: npm run build:linux
+        shell: bash
+        run: |
+          # Same idea as the Windows job: surface the real error as an
+          # annotation so it can be read without downloading job logs.
+          # GitHub runs bash with -e -o pipefail: disable it so the pipeline
+          # can fail without skipping the annotation.
+          set +e
+          npm run build:linux 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            msg=$(grep -iE 'error|failed|cannot|⨯' build.log | tail -n 8 | paste -sd '|' -)
+            [ -z "$msg" ] && msg=$(tail -n 8 build.log | paste -sd '|' -)
+            echo "::error file=.github/workflows/ci.yml::${msg//%/%25}"
+            exit "$status"
+          fi
 
       - name: Upload packages
         uses: actions/upload-artifact@v4
