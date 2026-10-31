@@ -25,9 +25,23 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
   historial por antigüedad.
 - `tests/change-history.test.ts`: cobertura de la retención, el límite de tres
   días, la deduplicación y los cambios replicados.
+- **App Android**: el mismo renderer, el mismo formato de bóveda `1.0` y el
+  mismo contrato `LocalPassBridge`, envueltos con Capacitor. La bóveda vive en
+  el directorio privado de la app; la carpeta de sync se elige con el selector
+  del sistema (Storage Access Framework) y el permiso sobrevive a los
+  reinicios. Sin permiso `INTERNET`: el bundle se sirve con
+  `WebViewLocalServer` y el sistema operativo impide abrir sockets. Copias de
+  seguridad y transferencia entre dispositivos deshabilitadas.
+- Scripts `android:sync`, `android:copy` y `android:open`.
+- **Ícono y splash propios** en todas las densidades, con *adaptive icon* en
+  Android 8+, generados desde `public/icon.svg` con `@capacitor/assets`.
 
 ### Corregido
 
+- **Empaquetado en CI**: electron-builder intenta publicar cuando detecta un
+  entorno de CI y abortaba sin `GH_TOKEN`. `--publish never` en
+  `build:electron` y `build:electron:linux` hace explícito que el proyecto no
+  publica desde el build.
 - **Guardar todos**: los borradores se aplican sobre un único snapshot del
   vault. Antes, el segundo borrador partía de la copia anterior y podía pisar
   el primero.

@@ -309,22 +309,34 @@ pedir permiso de almacenamiento amplio.
       en Windows y el camino inverso. Criterio: el ciclo funciona en los dos
       sentidos y la bóveda sobrevive a un reinicio de la app y del teléfono.
 
-- [ ] T5.7 **Documentación Android**: sección de instalación en `README.md`
+- [x] T5.7 **Documentación Android**: sección de instalación en `README.md`
       (requisitos, SAF + Syncthing, por qué no hay backup automático),
       `docs/SYNC.md` con la diferencia entre ruta de archivo (escritorio) y
       content URI (Android), y entrada en `docs/CHANGELOG.md`. Criterio: un
       usuario puede configurar el sync Android ↔ Windows sin leer el código.
+      Verificado: README (instalación, stack, requisitos, comandos),
+      `docs/SYNC.md` §5.1 y CHANGELOG con la entrada de Android.
 
 - [ ] T5.8 **CI Android** (evaluar): job que compile el APK debug en cada push
       con `ubuntu-latest` + `android-actions/setup-android`. Criterio: job verde
       o decisión registrada de no añadirlo (el APK de release y la firma son
       Fase 6).
 
-- [ ] T5.9 **Iconos y splash propios**: reemplazar los recursos por defecto de
+- [x] T5.9 **Iconos y splash propios**: reemplazar los recursos por defecto de
       Capacitor (`mipmap-*`, `drawable/splash.png`) por el ícono de
       `build/icon.png`, en todas las densidades y con *adaptive icon* en
       `mipmap-anydpi-v26`. Criterio: el lanzador muestra el ícono de LocalPass,
       no el de Capacitor, y el splash mantiene el fondo del tema.
+      Verificado: `assets/` (icon-only, foreground con transparencia real
+      `alphaMin=0`, background `#0D1B2A`, splash 2732×2732) genera 26 splash
+      (incluye `night`) y 6 densidades de `mipmap-*`. Dentro del APK no queda
+      ningún recurso de Capacitor. El adaptive icon compone foreground +
+      background con `inset` 16.7% y se revisó con máscara circular. Se
+      eliminaron `drawable/ic_launcher_background.xml` y
+      `drawable-v24/ic_launcher_foreground.xml`, que eran los defaults y ya no
+      tenían referencias. `@capacitor/assets` reformatea `AndroidManifest.xml`
+      al generar: se descarta ese diff cosmético y se conserva el manifiesto
+      versionado.
 
 ## Criterios de aceptación Fase 0
 
@@ -467,22 +479,34 @@ pedir permiso de almacenamiento amplio.
 - `android/` generado por `npx cap add android`: minSdk 24, compileSdk 36,
   targetSdk 36, Java 21.
 - **APK compilado**: `gradlew assembleDebug` (Gradle 8.14.3, AGP 8.13.0, JDK 21)
-  genera `android/app/build/outputs/apk/debug/app-debug.apk` (4.5 MB). Del
-  paquete, no del fuente: `com.localpass.app`, `versionName 1.1.0`, minSdk 24,
-  targetSdk 36, `allowBackup=false`, `fullBackupContent=false`,
-  `usesCleartextTraffic=false`, `dataExtractionRules` presente, **sin permiso
-  `INTERNET`** y `LocalPassStoragePlugin` en el dex.
+  genera `android/app/build/outputs/apk/debug/app-debug.apk`. Del paquete, no
+  del fuente: `com.localpass.app`, `versionName 1.1.0`, minSdk 24, targetSdk 36,
+  `allowBackup=false`, `fullBackupContent=false`, `usesCleartextTraffic=false`,
+  `dataExtractionRules` presente, **sin permiso `INTERNET`** y
+  `LocalPassStoragePlugin` en el dex. Con íconos y splash propios el APK pasa
+  de 4.5 a 5.3 MB.
+- **Iconos y splash**: `@capacitor/assets` genera 6 densidades de `mipmap-*`
+  (además de `ldpi`), 26 splash (`port`/`land`/`night`) y el adaptive icon con
+  `inset` 16.7%. El foreground tiene transparencia real (`alphaMin=0`), así que
+  el hueco de la cerradura y la puerta hundida muestran el `#0D1B2A` del
+  background en vez de un rectángulo incrustado. Revisado con una composición
+  circular equivalente a la máscara del lanzador. Dentro del APK no queda
+  ningún recurso de Capacitor: se borraron `drawable/ic_launcher_background.xml`
+  y `drawable-v24/ic_launcher_foreground.xml` tras comprobar que no tenían
+  referencias.
+- **CI verde** (run `41168068574`, `ce70b2b`): `Typecheck and tests`,
+  `Linux build` y `Windows build` en success. Es el primer run completo del
+  proyecto; confirma que `--publish never` era la causa y que los dos
+  instaladores y los paquetes Linux se generan en el runner.
 - **No verificado**: la prueba en dispositivo (T5.6) y el ciclo Guardar/Cargar
   Android ↔ Windows.
 
 ## Próximo paso
 
-Compilar el APK debug con el toolchain portable (T5.5), corregir los errores de
-compilación Java y después probar en el teléfono (T5.6). En paralelo, conseguir
-el log del job **Windows build** del run `41007216989` para cerrar el fallo de
-electron-builder: `verify` ya pasa en Ubuntu, así que el código está sano y el
-problema está en el entorno del runner. T4.4 (Linux real) queda al final, por
-decisión del usuario.
+Probar el APK en el teléfono (T5.6): crear la bóveda, cerrar y reabrir la app,
+elegir la carpeta SAF observada por Syncthing y cerrar el ciclo Guardar/Cargar
+contra Windows en los dos sentidos. Después queda decidir el job de Android en
+CI (T5.8) y T4.4 (Linux real), que sigue al final por decisión del usuario.
 
 ---
 **Actualizado**: 2026-10-30
