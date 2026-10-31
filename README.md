@@ -138,6 +138,30 @@ directorio privado de la app y queda excluida de las copias de seguridad
 (`allowBackup="false"` más reglas de extracción vacías). El APK de release y la
 firma son Fase 6.
 
+## Artefactos de release
+
+`dist/` pertenece a electron-builder y se borra en cada build, así que los
+binarios terminados no se organizan ahí. El script los copia a un árbol
+versionado por plataforma:
+
+```bash
+npm run release:collect
+```
+
+```
+releases/1.1.0/
+├── MANIFEST.txt        SHA256, tamaño y commit de cada archivo
+├── windows/            instalador NSIS y portable
+├── linux/              AppImage y .deb (cuando se compilan en Linux)
+└── android/            APK
+```
+
+Solo se copian los entregables de primer nivel de `dist/`: las carpetas
+`win-unpacked/` y `linux-unpacked/` son intermedios del empaquetado y contienen
+los mismos binarios con otro nombre. `releases/` está en `.gitignore` porque son
+binarios reconstruibles; el manifiesto viaja junto a los archivos para verificar
+la descarga.
+
 ## Comandos
 
 | Comando | Descripción |
@@ -149,6 +173,7 @@ firma son Fase 6.
 | `npm run build:electron` | Solo el empaquetado con electron-builder |
 | `npm run android:sync` | Build web y copia a `android/` |
 | `npm run android:open` | Abre el proyecto Android en Android Studio |
+| `npm run release:collect` | Copia los entregables a `releases/<version>/<plataforma>/` |
 | `npm run typecheck` | Verificación de tipos |
 | `npm test` | Tests unitarios (`node:test`) |
 
@@ -166,6 +191,8 @@ src/lib/password-generator.ts    Generación con CSPRNG
 src/lib/security-audit.ts        Motor de auditoría local
 src/lib/translations.ts          Traducciones (en, es, pt, fr, zh)
 public/fonts/                    Tipografías self-hosted
+scripts/collect-release.mjs     Copia los entregables a releases/<version>/
+releases/                        Artefactos por versión y plataforma (gitignored)
 tests/                           Tests de los módulos puros
 docs/                            Documentación
 ```

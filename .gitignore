@@ -23,6 +23,9 @@
 !/build/icon.svg
 /dist
 
+# build artifacts collected by `npm run release:collect`
+/releases
+
 # misc
 .DS_Store
 *.pem

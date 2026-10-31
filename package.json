@@ -19,6 +19,7 @@
     "android:sync": "run-s build:next android:copy",
     "android:copy": "cap sync android",
     "android:open": "cap open android",
+    "release:collect": "node scripts/collect-release.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.ts"
