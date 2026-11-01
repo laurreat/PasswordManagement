@@ -15,15 +15,15 @@ import {
   type PublishableChange,
 } from '@/lib/sync/engine';
 import { applyChangeLog, summarizeChangeLog, type ChangeSummary } from '@/lib/sync/apply';
-import { createDraft, removeDraft, upsertDraft, type CreateDraftInput } from '@/lib/drafts';
+import { createDraft, removeDraft, upsertDraft, type CreateDraftInput } from '@/lib/vault/drafts';
 import {
   appendAccountChange,
   createAccountChange,
   historyFromLog,
   mergeAccountHistory,
-} from '@/lib/change-history';
+} from '@/lib/vault/change-history';
 import type { ApplyOutcome, ChangeEntry, ChangeLogFile } from '@/lib/sync/types';
-import type { AccountChangeRecord, AccountEntry, VaultDecrypted, VaultDraft } from '@/lib/types';
+import type { AccountChangeRecord, AccountEntry, VaultDecrypted, VaultDraft } from '@/lib/vault/types';
 import { toast } from '@/hooks/use-toast';
 import { useUISettings } from '@/hooks/use-ui-settings';
 

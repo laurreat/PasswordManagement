@@ -5,7 +5,7 @@
  * so Syncthing never sees two writers on the same file.
  */
 
-import type { PasswordHistory } from '@/lib/types';
+import type { PasswordHistory } from '@/lib/vault/types';
 
 export const SYNC_FORMAT_VERSION = '1.0' as const;
 

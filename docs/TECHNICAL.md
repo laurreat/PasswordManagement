@@ -130,7 +130,7 @@ PasswordManagement/
 - Deniega todos los permisos salvo escritura al portapapeles.
 - Elimina el menú de la aplicación en producción.
 
-### `src/lib/crypto-utils.ts`
+### `src/lib/vault/crypto-utils.ts`
 
 ```typescript
 deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
@@ -177,7 +177,7 @@ interface VaultContextType {
 deduplicación antes de guardar. La contraseña maestra se mantiene en memoria
 mientras el vault está desbloqueado y se descarta al bloquear.
 
-### `src/lib/vault-storage.ts`
+### `src/lib/vault/vault-storage.ts`
 
 ```typescript
 parseVaultEnvelope(rawJson: string, source: VaultSource): VaultEncryptedFile
@@ -191,7 +191,7 @@ emptyVault(): VaultDecrypted
 (`{ exportVersion, exportedAt, deviceId, vaultData }`), tolera BOM y espacios, y
 valida la forma del vault descifrado antes de entregarlo a la UI.
 
-### `src/lib/vault-merge.ts`
+### `src/lib/vault/vault-merge.ts`
 
 La identidad de una cuenta es `sitio + usuario`, sin distinguir mayúsculas.
 
@@ -202,7 +202,7 @@ La identidad de una cuenta es `sitio + usuario`, sin distinguir mayúsculas.
 - `applyConflictResolution`: aplica la elección del usuario conservando el orden
   de las cuentas.
 
-### `src/lib/browser-csv.ts`
+### `src/lib/features/browser-csv.ts`
 
 Importa el CSV en texto plano que exportan Chrome, Edge, Brave, Firefox,
 Bitwarden y LastPass. El archivo lo lee el renderer y nunca sale del equipo.
@@ -223,7 +223,7 @@ Bitwarden y LastPass. El archivo lo lee el renderer y nunca sale del equipo.
 - Límites: 5 MB y 20.000 filas. Los duplicados dentro del archivo se colapsan
   quedándose con la última aparición.
 
-### `src/lib/password-generator.ts`
+### `src/lib/features/password-generator.ts`
 
 ```typescript
 generatePassword(options: PasswordGeneratorOptions): string
@@ -242,7 +242,7 @@ Reglas:
 - Longitud mínima 12, máxima 128.
 - Opción para excluir caracteres ambiguos (`I`, `l`, `1`, `O`, `0`, `o`).
 
-### `src/lib/security-audit.ts`
+### `src/lib/features/security-audit.ts`
 
 Motor determinista, sin red y sin modelos. Ver `docs/SECURITY.md` para el mapeo
 a frameworks.
@@ -255,7 +255,7 @@ estimateEntropyBits(password: string): number
 arePasswordsSimilar(first: string, second: string): boolean
 ```
 
-### `src/lib/audit-remediation.ts`
+### `src/lib/features/audit-remediation.ts`
 
 Convierte un hallazgo en un cambio concreto sin escribir nada por su cuenta. El
 módulo no conoce React ni el vault cifrado: recibe cuentas y devuelve datos.
@@ -445,10 +445,10 @@ proceso principal sólo usa módulos nativos de Electron y Node.
 
 | Archivo | Rol |
 |---------|-----|
-| `build/icon.svg` | Fuente vectorial (1024×1024) |
+| `public/icon.svg` | Fuente vectorial única (1024×1024); se sirve al renderer |
 | `build/icon.png` | Maestro 1024×1024; electron-builder deriva el `.ico` multi-tamaño para el `.exe`, el instalador NSIS y el portable |
-| `public/icon.svg` | Copia servida al renderer |
-| `public/icon.png` | Icono de la ventana en desarrollo y en el build |
+| `public/icon.png` | Icono de la ventana, 512×512 |
+| `assets/icon-only.png` | Mismo maestro 1024×1024 que usa `@capacitor/assets` para el lanzador de Android |
 
 `win.icon` apunta a `build/icon.png` y `win.signExecutable: false` permite que
 electron-builder edite los recursos del ejecutable (icono y metadatos) sin
@@ -475,7 +475,7 @@ instalador y del portable.
 npm test
 ```
 
-`node --test` ejecuta `tests/*.test.ts`. Los tests importan los módulos `.ts`
+`node --test` ejecuta `tests/**/*.test.ts`. Los tests importan los módulos `.ts`
 directamente (Node 22+ hace type stripping) y por eso `tsconfig.json` habilita
 `allowImportingTsExtensions`. `tests/package.json` declara `"type": "module"`
 para que los archivos de test se interpreten como ESM sin warnings.

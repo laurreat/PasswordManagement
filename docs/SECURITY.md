@@ -128,7 +128,7 @@ dice así en lugar de mentir con un "contraseña incorrecta" genérico.
 
 ### 3.3 Generación de contraseñas
 
-`src/lib/password-generator.ts`:
+`src/lib/features/password-generator.ts`:
 
 - Usa exclusivamente `crypto.getRandomValues`.
 - `randomInt` aplica muestreo por rechazo para eliminar el sesgo de módulo.

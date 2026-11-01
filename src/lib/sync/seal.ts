@@ -6,7 +6,7 @@
  * leaks through the sync folder.
  */
 
-import type { VaultEncryptedFile } from '@/lib/types';
+import type { VaultEncryptedFile } from '@/lib/vault/types';
 import {
   arrayBufferToBase64,
   base64ToArrayBuffer,
@@ -15,7 +15,7 @@ import {
   deriveKey,
   encryptData,
   uint8ArrayToBase64,
-} from '../crypto-utils.ts';
+} from '../vault/crypto-utils.ts';
 import { parseChangeLog } from './changes.ts';
 import { SyncError } from './errors.ts';
 import { SYNC_FORMAT_VERSION } from './types.ts';

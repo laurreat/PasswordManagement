@@ -6,8 +6,8 @@
  * (`baseRevision` matches) or must become an explicit conflict.
  */
 
-import type { AccountEntry } from '@/lib/types';
-import { accountKey } from '../vault-merge.ts';
+import type { AccountEntry } from '@/lib/vault/types';
+import { accountKey } from '../vault/vault-merge.ts';
 import { SyncError } from './errors.ts';
 import { SYNC_FORMAT_VERSION } from './types.ts';
 import type {

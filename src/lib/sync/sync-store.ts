@@ -6,7 +6,7 @@
  * envelope, and only a decrypted, validated log ever leaves it.
  */
 
-import { getBridge, type LocalPassBridge } from '../localpass-bridge.ts';
+import { getBridge, type LocalPassBridge } from '../platform/localpass-bridge.ts';
 import { SyncError } from './errors.ts';
 import { openChangeLog, parseChangeLogEnvelope, sealChangeLog } from './seal.ts';
 import type { ChangeLogFile } from './types.ts';

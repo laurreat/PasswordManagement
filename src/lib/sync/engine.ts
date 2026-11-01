@@ -11,7 +11,7 @@
  *      conflict and the user decides.
  */
 
-import type { AccountEntry, VaultDecrypted, VaultDraft } from '@/lib/types';
+import type { AccountEntry, VaultDecrypted, VaultDraft } from '@/lib/vault/types';
 import { applyChange, applyChangeLog, baselineAccounts } from './apply.ts';
 import {
   appendEntry,

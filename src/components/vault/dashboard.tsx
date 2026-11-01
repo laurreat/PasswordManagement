@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useVault } from "@/hooks/use-vault";
 import { useUISettings } from "@/hooks/use-ui-settings";
-import { AccountEntry, PasswordHistory } from "@/lib/types";
+import { AccountEntry, PasswordHistory } from "@/lib/vault/types";
 import { 
   Plus, Search, ShieldCheck, Settings, Key, 
   LogOut, Globe, User, Copy, ExternalLink,
@@ -24,18 +24,18 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger 
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { toVaultErrorCode } from "@/lib/vault-errors";
-import { vaultErrorMessageKey } from "@/lib/vault-error-messages";
-import { copySecret } from "@/lib/clipboard";
-import { auditVault } from "@/lib/security-audit";
+import { toVaultErrorCode } from "@/lib/vault/vault-errors";
+import { vaultErrorMessageKey } from "@/lib/vault/vault-error-messages";
+import { copySecret } from "@/lib/platform/clipboard";
+import { auditVault } from "@/lib/features/security-audit";
 import {
   applyCsvImport,
   CsvImportError,
   MAX_CSV_BYTES,
   parseBrowserCsv,
   previewCsvImport,
-} from "@/lib/browser-csv";
-import type { CsvParseResult, CsvImportErrorCode } from "@/lib/browser-csv";
+} from "@/lib/features/browser-csv";
+import type { CsvParseResult, CsvImportErrorCode } from "@/lib/features/browser-csv";
 import { SecurityAudit } from "./security-audit";
 import { PasswordGenerator } from "./password-generator";
 import { ConflictResolver } from "./conflict-resolver";
@@ -44,7 +44,7 @@ import { ChangesView } from "./changes";
 import { useSync } from "@/hooks/use-sync";
 import type { PublishableChange } from "@/lib/sync/engine";
 import { Textarea } from "@/components/ui/textarea";
-import { createDraft } from "@/lib/drafts";
+import { createDraft } from "@/lib/vault/drafts";
 
 type ViewMode = 'accounts' | 'changes' | 'conflicts' | 'generator' | 'audit' | 'settings' | 'documentation';
 

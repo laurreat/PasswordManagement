@@ -9,14 +9,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Copy, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { copySecret } from "@/lib/clipboard";
+import { copySecret } from "@/lib/platform/clipboard";
 import {
   generatePassword,
   getPoolSize,
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
   type PasswordGeneratorOptions,
-} from "@/lib/password-generator";
+} from "@/lib/features/password-generator";
 
 type GeneratorSettings = Omit<PasswordGeneratorOptions, "length">;
 

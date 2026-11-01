@@ -2,7 +2,7 @@
 
 // Side effect first: on Android it installs `window.localpass` before any
 // store is created. Everywhere else it is a no-op.
-import "@/lib/capacitor-boot";
+import "@/lib/platform/capacitor-boot";
 
 import { VaultProvider, useVault } from "@/hooks/use-vault";
 import { SyncProvider } from "@/hooks/use-sync";

@@ -6,9 +6,9 @@
  * conflict. A conflict is a decision for the user, never a guess.
  */
 
-import type { AccountEntry, ConflictEntry, VaultDecrypted } from '@/lib/types';
-import { accountKey } from '../vault-merge.ts';
-import { accountChangeFromEntry, appendAccountChange } from '../change-history.ts';
+import type { AccountEntry, ConflictEntry, VaultDecrypted } from '@/lib/vault/types';
+import { accountKey } from '../vault/vault-merge.ts';
+import { accountChangeFromEntry, appendAccountChange } from '../vault/change-history.ts';
 import { fromSnapshot } from './changes.ts';
 import type { AccountSnapshot, ApplyOutcome, ChangeEntry, ChangeLogFile } from './types.ts';
 

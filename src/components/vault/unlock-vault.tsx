@@ -28,8 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { KeyRound, ShieldAlert, Trash2, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { toVaultErrorCode, type VaultErrorCode } from "@/lib/vault-errors";
-import { vaultErrorMessageKey } from "@/lib/vault-error-messages";
+import { toVaultErrorCode, type VaultErrorCode } from "@/lib/vault/vault-errors";
+import { vaultErrorMessageKey } from "@/lib/vault/vault-error-messages";
 
 export function UnlockVault() {
   const { unlock, resetVault, importVault } = useVault();

@@ -20,7 +20,6 @@
 # production
 /build/*
 !/build/icon.png
-!/build/icon.svg
 /dist
 
 # build artifacts collected by `npm run release:collect`

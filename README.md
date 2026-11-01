@@ -182,18 +182,18 @@ la descarga.
 ```
 electron/main.js                 Proceso principal, CSP y protocolo app://
 src/app/                         Entrada de Next.js (App Router)
+src/components/ui/               Primitivas de shadcn/ui
 src/components/vault/            UI del vault, generador y auditoría
-src/hooks/use-vault.tsx          Estado del vault y ciclo de vida
-src/lib/vault-storage.ts         Formato en disco, cifrado y validación
-src/lib/vault-errors.ts          Taxonomía de errores
-src/lib/vault-merge.ts           Reglas de importación y conflictos
-src/lib/password-generator.ts    Generación con CSPRNG
-src/lib/security-audit.ts        Motor de auditoría local
-src/lib/translations.ts          Traducciones (en, es, pt, fr, zh)
+src/hooks/                       Estado del vault, del sync y de los ajustes
+src/lib/vault/                   Formato en disco, cifrado, borradores y conflictos
+src/lib/sync/                    Motor de cambios entre dispositivos
+src/lib/platform/                Puentes Electron/Capacitor y portapapeles
+src/lib/features/                Generador, auditoría, importación y exportación
+src/lib/i18n/                    Traducciones (en, es, pt, fr, zh)
 public/fonts/                    Tipografías self-hosted
-scripts/collect-release.mjs     Copia los entregables a releases/<version>/
+scripts/collect-release.mjs      Copia los entregables a releases/<version>/
 releases/                        Artefactos por versión y plataforma (gitignored)
-tests/                           Tests de los módulos puros
+tests/                           Tests de los módulos puros (espeja src/lib)
 docs/                            Documentación
 ```
 

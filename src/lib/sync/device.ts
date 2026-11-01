@@ -5,7 +5,7 @@
  * in the change list ("Windows", "Android"). Neither is an account.
  */
 
-import type { VaultDecrypted } from '@/lib/types';
+import type { VaultDecrypted } from '@/lib/vault/types';
 
 export const MAX_DEVICE_NAME = 40;
 

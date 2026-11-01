@@ -42,17 +42,17 @@ import {
   type AccountAudit,
   type AuditIssueCode,
   type Severity,
-} from "@/lib/security-audit";
+} from "@/lib/features/security-audit";
 import {
   advisoryIssues,
   applyPasswordRemediation,
   generateRemediationPassword,
   remediationIssues,
   remainingFindingCodes,
-} from "@/lib/audit-remediation";
-import type { AccountEntry } from "@/lib/types";
-import { copySecret } from "@/lib/clipboard";
-import { appendAccountChange, createAccountChange } from "@/lib/change-history";
+} from "@/lib/features/audit-remediation";
+import type { AccountEntry } from "@/lib/vault/types";
+import { copySecret } from "@/lib/platform/clipboard";
+import { appendAccountChange, createAccountChange } from "@/lib/vault/change-history";
 import { useSync } from "@/hooks/use-sync";
 import type { PublishableChange } from "@/lib/sync/engine";
 import { cn } from "@/lib/utils";

@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { useSync, type PeerLoadPreview, type PeerPendingChange } from '@/hooks/use-sync';
 import { useVault } from '@/hooks/use-vault';
 import { useUISettings } from '@/hooks/use-ui-settings';
-import type { AccountChangeRecord, VaultDraft } from '@/lib/types';
-import { isHistoryHidden, splitHistoryByAge } from '@/lib/change-history';
+import type { AccountChangeRecord, VaultDraft } from '@/lib/vault/types';
+import { isHistoryHidden, splitHistoryByAge } from '@/lib/vault/change-history';
 
 /**
  * On Android the sync folder is a SAF content URI

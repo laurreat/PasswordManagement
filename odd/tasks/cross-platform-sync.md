@@ -525,6 +525,33 @@ pedir permiso de almacenamiento amplio.
 - **Verificación**: `npm run typecheck` y `npm test` (233/233) en verde después
   del cambio; CI de `9aea07a` (run `41169662406`) en success en los tres jobs.
 
+### Reorganización del árbol de código
+
+- **`src/lib` agrupado por dominio**: 18 módulos que vivían planos pasaron a
+  `vault/` (formato, cifrado, borradores, conflictos, historial),
+  `platform/` (puentes Electron/Capacitor y portapapeles), `features/`
+  (generador, auditoría, CSV, remediación) e `i18n/` (traducciones). `sync/`
+  ya existía y `utils.ts` queda en la raíz de `lib/` por convención de shadcn.
+- **`tests/` espeja esa estructura** (`tests/vault`, `tests/sync`,
+  `tests/platform`, `tests/features`, `tests/i18n`) y `npm test` pasó a
+  `node --test "tests/**/*.test.ts"`. Node 24 resuelve el glob; verificado con
+  un test sonda antes de mover nada.
+- **Riesgo real detectado**: los módulos de `lib` se importan entre sí con
+  rutas relativas, no con `@/`, porque `node --test` ejecuta los `.ts` directo
+  y no conoce el alias de TypeScript. Un reemplazo de texto habría roto 40
+  imports. El codemod resuelve cada especificador contra el árbol viejo y
+  recalcula la ruta desde la ubicación nueva, preservando la extensión.
+- **Residuos borrados**: los tests de plantilla de Capacitor
+  (`com/getcapacitor/myapp/Example*.java`) apuntaban a un paquete que no existe
+  en esta app, y `build/icon.svg` era byte a byte idéntico a `public/icon.svg`
+  y no lo usa electron-builder. `docs/TECHNICAL.md` documentaba ambos SVG como
+  fuente, contradiciendo a `assets/README.md`; ahora hay una sola fuente.
+- **Verificación**: `npm run typecheck`, `npm test` (233/233) y
+  `npm run build:next` en verde después del movimiento; sin referencias a rutas
+  viejas en código, README, TECHNICAL ni SECURITY. `docs/CHANGELOG.md` y los
+  documentos de `odd/` conservan las rutas de su momento a propósito: registran
+  lo que existía cuando se escribieron.
+
 ## Próximo paso
 
 Probar el APK en el teléfono (T5.6): crear la bóveda, cerrar y reabrir la app,

@@ -1,13 +1,13 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import type { AccountEntry, ConflictEntry, VaultDecrypted } from '@/lib/types';
-import { decryptVaultFile, encryptVault, buildExportPackage, emptyVault, parseVaultEnvelope } from '@/lib/vault-storage';
-import { toVaultErrorCode, type VaultErrorCode } from '@/lib/vault-errors';
-import { createVaultStore, type VaultStore } from '@/lib/vault-store';
+import type { AccountEntry, ConflictEntry, VaultDecrypted } from '@/lib/vault/types';
+import { decryptVaultFile, encryptVault, buildExportPackage, emptyVault, parseVaultEnvelope } from '@/lib/vault/vault-storage';
+import { toVaultErrorCode, type VaultErrorCode } from '@/lib/vault/vault-errors';
+import { createVaultStore, type VaultStore } from '@/lib/vault/vault-store';
 import { suggestDeviceName, withDeviceName } from '@/lib/sync/device';
-import { accountKey, dedupeAccounts, mergeImportedVault } from '@/lib/vault-merge';
-import { appendAccountChange, createAccountChange } from '@/lib/change-history';
+import { accountKey, dedupeAccounts, mergeImportedVault } from '@/lib/vault/vault-merge';
+import { appendAccountChange, createAccountChange } from '@/lib/vault/change-history';
 import { toast } from '@/hooks/use-toast';
 import { useUISettings } from '@/hooks/use-ui-settings';
 
