@@ -663,6 +663,29 @@ pedir permiso de almacenamiento amplio.
   (baseline + bóveda local) y una decisión de producto sobre qué gana en caso de
   colisión, así que se deja fuera de este arreglo a propósito.
 
+### Entrega 1.1.0 con T5.11
+
+- **Motivo**: el APK instalado en el teléfono era anterior al arreglo, así que la
+  tarjeta del baseline no podía aparecer aunque el código ya estuviera
+  corregido. Se reconstruyó todo en vez de entregar sólo el APK: el mismo build
+  web va al `.exe` y al `.apk`.
+- **Artefactos** (`releases/1.1.0/`, `MANIFEST.txt` con `commit: 07fa4a6`):
+  portable 110 781 471 B (`2d4e4284`), NSIS 121 974 368 B (`713868be`), APK
+  5 560 062 B (`5fdf06f1`).
+- **Contenido verificado**: el APK se expandió como zip y el chunk
+  `0pjr2bocugto4.js` de `assets/public/_next/static/chunks` contiene
+  `cuentas base`, cadena que sólo existe desde este arreglo; el mismo chunk está
+  en `out/` y en `dist/win-unpacked/resources/app.asar.unpacked/out/`, y el
+  `index.html` del APK tiene el mismo SHA256 que `out/index.html`. Es decir: PC
+  y teléfono llevan exactamente el mismo bundle.
+- **Bloqueo encontrado**: `release:collect` falló con `EBUSY` porque el
+  `LocalPass-1.1.0-portable.exe` de la entrega anterior estaba en ejecución y
+  Windows no permite sobrescribirlo ni renombrarlo. Se cerró esa instancia y se
+  repitió el empaquetado; los tres artefactos coinciden con `dist/` y con el
+  `app-debug.apk` recién compilado.
+- **Pendiente**: instalar el APK y comprobar que la pestaña remota muestra la PC
+  con el botón **Cargar** (T5.6). Sigue sin verificarse en el dispositivo.
+
 ## Próximo paso
 
 Probar el APK en el teléfono (T5.6): crear la bóveda, cerrar y reabrir la app,
