@@ -102,7 +102,7 @@ export function ConflictResolver() {
             <CardContent className="p-0">
               <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">
                 {/* Versión Local */}
-                <div className="p-8 flex flex-col gap-6 bg-background">
+                <div className="p-4 sm:p-8 flex flex-col gap-6 bg-background">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-tighter text-muted-foreground">{t('conflicts.local_version')}</span>
                     <Badge variant="secondary" className="rounded-sm">LOCAL</Badge>
@@ -114,7 +114,7 @@ export function ConflictResolver() {
                 </div>
 
                 {/* Versión Importada */}
-                <div className="p-8 flex flex-col gap-6 bg-accent/5">
+                <div className="p-4 sm:p-8 flex flex-col gap-6 bg-accent/5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-tighter text-muted-foreground">{t('conflicts.imported_version')}</span>
                     <Badge className="bg-accent rounded-sm text-accent-foreground">IMPORT</Badge>

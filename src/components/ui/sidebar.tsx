@@ -206,7 +206,18 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <div className="flex h-full w-full flex-col">{children}</div>
+            <div
+              className="flex h-full w-full flex-col"
+              onClick={(event) => {
+                // On phones the drawer covers the content, so tapping a
+                // navigation item must also close it.
+                if ((event.target as HTMLElement).closest('[data-sidebar="menu-button"]')) {
+                  setOpenMobile(false)
+                }
+              }}
+            >
+              {children}
+            </div>
           </SheetContent>
         </Sheet>
       )

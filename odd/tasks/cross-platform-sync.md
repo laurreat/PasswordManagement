@@ -338,6 +338,16 @@ pedir permiso de almacenamiento amplio.
       al generar: se descarta ese diff cosmético y se conserva el manifiesto
       versionado.
 
+- [x] T5.10 **Diseño usable en teléfono**. La UI se diseñó a 1000 px y en un
+      teléfono no había navegación: el `Sidebar` de shadcn se monta como
+      `Sheet` bajo 768 px y el proyecto nunca importó `SidebarTrigger`, así que
+      la única acción alcanzable era "Añadir Cuenta". Criterio: a 390×844 se
+      llega a las siete vistas, no hay scroll horizontal y el detalle de cuenta
+      no rompe el layout. Verificado en navegador (iframe de 390×844 sobre
+      `next dev`): trigger de 40×40 en el header, drawer de 288 px que se cierra
+      al elegir una vista y `docW=390` en Cuentas, Cambios, Generador,
+      Auditoría, Conflictos, Ajustes y Documentación.
+
 ## Criterios de aceptación Fase 0
 
 1. `LICENSE` presenta GPL-3.0-or-later y `package.json` lo declara.
@@ -552,11 +562,45 @@ pedir permiso de almacenamiento amplio.
   documentos de `odd/` conservan las rutas de su momento a propósito: registran
   lo que existía cuando se escribieron.
 
+### Diseño móvil Android
+
+- **Causa raíz**: `Sidebar` renderiza un `Sheet` sólo bajo 768 px y no existía
+  ningún `SidebarTrigger`; en el DOM móvil no había `[data-sidebar="sidebar"]`
+  ni ningún botón de navegación. Se confirmó midiendo el DOM a 390×844, no por
+  inspección visual.
+- **Shell**: `h-screen` → `h-[100dvh]`; padding del header `px-3 sm:px-8` y del
+  contenido `p-4 sm:p-8`; "Añadir Cuenta" colapsa a ícono bajo `sm` con
+  `aria-label`; el trigger sólo aparece bajo `md`, el mismo breakpoint que usa
+  `useIsMobile`.
+- **Detalle de cuenta**: el panel era `w-96` dentro de un flex horizontal, así
+  que abrir una cuenta a 390 px dejaba 6 px para la lista y el `overflow-hidden`
+  del shell recortaba todo. Ahora es `fixed inset-0` en móvil y vuelve a
+  `md:static md:w-96` en escritorio.
+- **Desbordes concretos**: la fila de idiomas (5 `flex-1` en un `flex gap-4`)
+  medía 569 px a 390; pasó a grilla de 2 columnas, 3 en `sm`. Las pestañas de
+  Cambios (`grid-cols-3` con "Cambios de otros dispositivos") pasaron a una
+  columna bajo `sm`, y las filas de carpeta y nombre del dispositivo se apilan.
+- **Teclado y diálogos**: `viewport` ahora exporta `interactiveWidget:
+  'resizes-content'` para que `100dvh` siga al teclado de Android, y
+  `DialogContent` tiene margen de 1 rem, `max-h-[calc(100dvh-2rem)]` y scroll.
+  No se usó `viewport-fit=cover`: Capacitor 8 ya aplica los insets del sistema
+  al WebView cuando el meta no lo pide, y forzar el bleed sin controlar el
+  estilo de la barra de estado dejaría íconos ilegibles.
+- **Verificación**: `typecheck`, `npm test` (233/233) y `build:next` en verde.
+  Medido en navegador con un iframe de 390×844: sin `scrollWidth > 390` en las
+  siete vistas, drawer que abre y se cierra, y el panel de detalle a 390×844
+  sin colapsar la lista. En 900 px el sidebar sigue fijo en 255 px, el trigger
+  mide 0×0 y el header arranca en x=256: escritorio intacto.
+- **Pendiente**: validar en el teléfono (T5.6). El iframe reproduce media
+  queries y layout, no el WebView de Android ni el teclado real.
+
 ## Próximo paso
 
 Probar el APK en el teléfono (T5.6): crear la bóveda, cerrar y reabrir la app,
 elegir la carpeta SAF observada por Syncthing y cerrar el ciclo Guardar/Cargar
-contra Windows en los dos sentidos. Después queda decidir el job de Android en
+contra Windows en los dos sentidos. El layout móvil (T5.10) ya está listo para
+esa prueba: la navegación se abre con el botón de menú del header. Después queda
+decidir el job de Android en
 CI (T5.8) y T4.4 (Linux real), que sigue al final por decisión del usuario.
 
 ---

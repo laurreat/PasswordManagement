@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { 
   Sidebar, SidebarContent, SidebarHeader, SidebarMenu, 
-  SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarFooter 
+  SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarFooter,
+  SidebarTrigger
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -270,7 +271,7 @@ export function Dashboard() {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-background">
+      <div className="flex h-[100dvh] w-full overflow-hidden bg-background">
         <Sidebar className="border-r border-sidebar-border">
           <SidebarHeader className="p-6">
             <div className="flex items-center gap-2 mb-2">
@@ -332,10 +333,10 @@ export function Dashboard() {
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-sidebar-border space-y-2">
             <div className="flex gap-2">
-              <Button variant="ghost" size="icon" className="flex-1 text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+              <Button variant="ghost" size="icon" className="flex-1 text-sidebar-foreground hover:bg-sidebar-accent" aria-label={t('settings.theme')} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
                 {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
-              <Button variant="ghost" size="icon" className="flex-1 text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setLanguage(language === 'es' ? 'en' : 'es')}>
+              <Button variant="ghost" size="icon" className="flex-1 text-sidebar-foreground hover:bg-sidebar-accent" aria-label={t('settings.language')} onClick={() => setLanguage(language === 'es' ? 'en' : 'es')}>
                 <Languages className="w-4 h-4" />
               </Button>
             </div>
@@ -346,8 +347,9 @@ export function Dashboard() {
         </Sidebar>
 
         <main className="flex-1 flex flex-col min-w-0">
-          <header className="h-16 border-b flex items-center justify-between px-8 bg-card backdrop-blur-md sticky top-0 z-10">
-            <div className="flex-1 max-w-xl">
+          <header className="h-16 border-b flex items-center gap-2 sm:gap-3 px-3 sm:px-8 bg-card backdrop-blur-md sticky top-0 z-10">
+            <SidebarTrigger className="-ml-1 h-10 w-10 shrink-0 md:hidden" />
+            <div className="flex-1 min-w-0 max-w-xl">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -358,11 +360,12 @@ export function Dashboard() {
                 />
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <Dialog open={isAdding} onOpenChange={setIsAdding}>
                 <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" /> {t('dashboard.add_account')}
+                  <Button className="gap-2 px-3 sm:px-4" aria-label={t('dashboard.add_account')}>
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">{t('dashboard.add_account')}</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -395,10 +398,10 @@ export function Dashboard() {
             </div>
           </header>
 
-          <div className="flex-1 overflow-hidden p-8">
+          <div className="flex-1 overflow-hidden p-4 sm:p-8">
             <ScrollArea className="h-full">
               {view === 'accounts' && (
-                <div className="h-full flex flex-col gap-8">
+                <div className="h-full flex flex-col gap-4 sm:gap-8">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card className="bg-primary/5 border-primary/10 shadow-none">
                       <CardContent className="pt-6">
@@ -481,20 +484,20 @@ export function Dashboard() {
                         <h3 className="font-bold text-lg flex items-center gap-2">
                           <Languages className="w-5 h-5" /> {t('settings.language')}
                         </h3>
-                        <div className="flex gap-4">
-                          <Button variant={language === 'en' ? 'default' : 'outline'} className="flex-1" onClick={() => setLanguage('en')}>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4">
+                          <Button variant={language === 'en' ? 'default' : 'outline'} onClick={() => setLanguage('en')}>
                             {t('settings.english')}
                           </Button>
-                          <Button variant={language === 'es' ? 'default' : 'outline'} className="flex-1" onClick={() => setLanguage('es')}>
+                          <Button variant={language === 'es' ? 'default' : 'outline'} onClick={() => setLanguage('es')}>
                             {t('settings.spanish')}
                           </Button>
-                          <Button variant={language === 'pt' ? 'default' : 'outline'} className="flex-1" onClick={() => setLanguage('pt')}>
+                          <Button variant={language === 'pt' ? 'default' : 'outline'} onClick={() => setLanguage('pt')}>
                             {t('settings.portuguese')}
                           </Button>
-                          <Button variant={language === 'fr' ? 'default' : 'outline'} className="flex-1" onClick={() => setLanguage('fr')}>
+                          <Button variant={language === 'fr' ? 'default' : 'outline'} onClick={() => setLanguage('fr')}>
                             {t('settings.french')}
                           </Button>
-                          <Button variant={language === 'zh' ? 'default' : 'outline'} className="flex-1" onClick={() => setLanguage('zh')}>
+                          <Button variant={language === 'zh' ? 'default' : 'outline'} onClick={() => setLanguage('zh')}>
                             {t('settings.chinese')}
                           </Button>
                         </div>
@@ -506,11 +509,11 @@ export function Dashboard() {
                         <h3 className="font-bold text-lg flex items-center gap-2">
                           {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />} {t('settings.theme')}
                         </h3>
-                        <div className="flex gap-4">
-                          <Button variant={theme === 'light' ? 'default' : 'outline'} className="flex-1" onClick={() => setTheme('light')}>
+                        <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                          <Button variant={theme === 'light' ? 'default' : 'outline'} onClick={() => setTheme('light')}>
                             {t('settings.light')}
                           </Button>
-                          <Button variant={theme === 'dark' ? 'default' : 'outline'} className="flex-1" onClick={() => setTheme('dark')}>
+                          <Button variant={theme === 'dark' ? 'default' : 'outline'} onClick={() => setTheme('dark')}>
                             {t('settings.dark')}
                           </Button>
                         </div>
@@ -730,9 +733,9 @@ export function Dashboard() {
                           <Cpu className="w-5 h-5" /> {t('settings.tech_info')}
                         </h3>
                         <div className="space-y-2 text-sm">
-                          <div className="flex justify-between border-b py-2">
-                            <span className="text-muted-foreground">{t('settings.device_id')}</span>
-                            <span className="font-mono text-[10px]">{vault?.deviceId}</span>
+                          <div className="flex justify-between gap-3 border-b py-2">
+                            <span className="shrink-0 text-muted-foreground">{t('settings.device_id')}</span>
+                            <span className="truncate font-mono text-[10px]">{vault?.deviceId}</span>
                           </div>
                           <div className="flex justify-between border-b py-2">
                             <span className="text-muted-foreground">{t('settings.algorithm')}</span>
@@ -756,7 +759,7 @@ export function Dashboard() {
         </main>
 
         {selectedAccount && (
-          <aside className="w-96 border-l bg-card backdrop-blur-md p-8 overflow-y-auto animate-in slide-in-from-right duration-300">
+          <aside className="fixed inset-0 z-40 w-full overflow-y-auto border-l bg-card p-4 backdrop-blur-md animate-in slide-in-from-right duration-300 md:static md:z-auto md:w-96 md:p-8">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-xl font-headline font-bold">{t('dashboard.details')}</h2>
               <div className="flex gap-2">

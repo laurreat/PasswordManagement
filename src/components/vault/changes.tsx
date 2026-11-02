@@ -145,7 +145,7 @@ export const ChangesView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 space-y-6 max-w-5xl mx-auto">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -204,7 +204,7 @@ export const ChangesView: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">{t('sync.folder')}</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   value={folder ? folderLabel(folder) : t('sync.folder_none')}
                   title={folder ?? undefined}
@@ -220,7 +220,7 @@ export const ChangesView: React.FC = () => {
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">{t('sync.device_name')}</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   value={editingDeviceName}
                   onChange={(e) => setEditingDeviceName(e.target.value)}
@@ -254,7 +254,7 @@ export const ChangesView: React.FC = () => {
 
       {/* Main Tabs: Local Drafts, Remote Peer Changes and History */}
       <Tabs defaultValue="local" className="w-full">
-        <TabsList className="grid grid-cols-3 max-w-xl">
+        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:inline-flex sm:h-10 sm:w-auto sm:max-w-xl">
           <TabsTrigger value="local" className="flex items-center gap-2">
             {t('changes.tab_local')}
             {drafts.length > 0 && (
