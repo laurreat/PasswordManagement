@@ -204,7 +204,13 @@ en producción.
 
 ### ¿Puedo sincronizar entre dispositivos?
 
-**No de forma automática**. Debes exportar e importar manualmente para transferir datos.
+**Sí, y siempre de forma explícita**. Elegí una carpeta de sincronización
+compartida (una carpeta de Syncthing, un pendrive o una carpeta de red) en
+**Cambios → Sincronización**, y desde ese momento el dispositivo que originó una
+edición pulsa **Guardar** y el que la recibe pulsa **Cargar**. Nada se aplica
+solo: cada lado decide cuándo. Los dos dispositivos necesitan la misma
+Contraseña Maestra, y la carpeta compartida sólo contiene sobres cifrados.
+Fuera de eso, el método manual de exportar e importar sigue disponible.
 
 ### ¿La app necesita internet?
 
