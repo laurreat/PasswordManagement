@@ -594,6 +594,25 @@ pedir permiso de almacenamiento amplio.
 - **Pendiente**: validar en el teléfono (T5.6). El iframe reproduce media
   queries y layout, no el WebView de Android ni el teclado real.
 
+### Entrega 1.1.0 reconstruida
+
+- **Motivo**: los artefactos de `releases/1.1.0/` se generaron en `9aea07a`,
+  cuatro commits por detrás. El APK entregado no traía ni el reordenamiento de
+  `src/lib` ni el layout móvil, así que no servía para probar T5.6.
+- **Decisión**: pisar `releases/1.1.0/` en vez de publicar 1.1.1. `version` en
+  `package.json` y `versionName` del APK siguen en `1.1.0`; los SHA256 del
+  manifiesto anterior quedaron reemplazados.
+- **Build**: `npm run build` (export estático + electron-builder: NSIS 116.3 MB
+  y portable 105.7 MB), `npx cap sync android` y `gradlew assembleDebug` con el
+  toolchain portable de `%TEMP%\lp-android` (JDK 21 + SDK 36), APK de 5.3 MB.
+- **Contenido verificado**: el `out/index.html` dentro de `app.asar.unpacked` y
+  dentro del APK tiene `interactive-widget=resizes-content`, y el chunk
+  `11p-orej59cgl.js` contiene `max-h-[calc(100dvh-2rem)]`, el cambio de diálogos
+  de `69a33af`. No se ejecutó el `.exe` ni se instaló el APK: eso es T5.6.
+- **Documentación**: la FAQ de `docs/USER_GUIDE.md` seguía diciendo que el sync
+  entre dispositivos no existía; ahora describe Guardar/Cargar sobre una carpeta
+  compartida.
+
 ## Próximo paso
 
 Probar el APK en el teléfono (T5.6): crear la bóveda, cerrar y reabrir la app,
@@ -604,4 +623,4 @@ decidir el job de Android en
 CI (T5.8) y T4.4 (Linux real), que sigue al final por decisión del usuario.
 
 ---
-**Actualizado**: 2026-10-30
+**Actualizado**: 2026-11-01
