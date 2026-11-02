@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createChangeEntry, emptyChangeLog } from '../../src/lib/sync/changes.ts';
+import { createBaseline, createChangeEntry, emptyChangeLog } from '../../src/lib/sync/changes.ts';
 import {
   adoptBaseline,
   commitDraft,
   enableSync,
   needsBaseline,
+  pendingBaselines,
   publishAppliedChange,
   pullChanges,
   stageChange,
@@ -388,4 +389,37 @@ test('publishAppliedChange accepts a revision-only resolution when allowed', () 
   assert.equal(result.log.entries.length, 1);
   assert.deepEqual(result.entry.changedFields, []);
   assert.equal(result.entry.after?.revision, 3);
+});
+
+test('pendingBaselines exposes a peer that only published a baseline', () => {
+  // Enabling sync stores the existing accounts in the baseline, so a peer that
+  // never published an entry has nothing `peerChanges` can render. A fresh
+  // device would then have no button to pull those accounts.
+  const peer = createBaseline(
+    emptyChangeLog('device-pc', 'PC de escritorio'),
+    [account({ id: 'acc-pc', deviceId: 'device-pc' })],
+    NOW
+  );
+
+  assert.deepEqual(peer.entries, []);
+
+  const pending = pendingBaselines(vault(), [peer]);
+
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0].deviceId, 'device-pc');
+});
+
+test('pendingBaselines is empty once the vault already has accounts', () => {
+  // Offering the action here would be a button that does nothing: `readPeer`
+  // only adopts a baseline into a completely empty vault.
+  const peer = createBaseline(emptyChangeLog('device-pc', 'PC'), [account()], NOW);
+
+  assert.deepEqual(pendingBaselines(vault({ accounts: [account()] }), [peer]), []);
+});
+
+test('pendingBaselines ignores peers with no baseline and our own log', () => {
+  const own = createBaseline(emptyChangeLog('device-a', 'Local'), [account()], NOW);
+  const empty = emptyChangeLog('device-b', 'Sin baseline');
+
+  assert.deepEqual(pendingBaselines(vault(), [own, empty]), []);
 });

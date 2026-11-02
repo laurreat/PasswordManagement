@@ -348,6 +348,19 @@ pedir permiso de almacenamiento amplio.
       al elegir una vista y `docW=390` en Cuentas, Cambios, Generador,
       Auditoría, Conflictos, Ajustes y Documentación.
 
+- [x] T5.11 **Ofrecer el baseline en la pestaña remota**. Un dispositivo que
+      sólo activó sync publica sus cuentas en `baseline`, no como `entries`, y
+      la pestaña "Cambios de otros dispositivos" sólo recorría `entries`: con
+      `entries = []` no había tarjeta, no había botón **Cargar** y el primer
+      sync quedaba sin disparador aunque `adoptBaseline` lo resolviera. Además
+      `refresh()` se comía todo error, así que "no hay cambios" podía significar
+      carpeta ilegible, contraseña distinta o carpeta vacía. Criterio: la
+      pestaña lista los peers con baseline adoptable y ofrece **Cargar**, y un
+      fallo de lectura se muestra en pantalla. Verificado con `pendingBaselines`
+      (tres casos unitarios) y un test de punta a punta con el crypto real
+      (`tests/sync/sync-first-device.test.ts`); `typecheck` limpio y
+      `npm test` 238/238. Falta confirmarlo en el teléfono (T5.6).
+
 ## Criterios de aceptación Fase 0
 
 1. `LICENSE` presenta GPL-3.0-or-later y `package.json` lo declara.
@@ -613,12 +626,52 @@ pedir permiso de almacenamiento amplio.
   entre dispositivos no existía; ahora describe Guardar/Cargar sobre una carpeta
   compartida.
 
+### Baseline invisible en la pestaña remota (T5.11)
+
+- **Síntoma**: el teléfono no mostraba ninguna cuenta de la PC aunque el sync
+  estuviera activo y se pulsara "Actualizar cambios"; la pestaña "Cambios de
+  otros dispositivos" quedaba vacía. Confirmado por el usuario, no inferido.
+- **Causa raíz**: `enableSync()` guarda las cuentas existentes en el `baseline`
+  del log y deja `entries` vacío. `use-sync.tsx` armaba `peerChanges` recorriendo
+  únicamente `log.entries`, y el botón **Cargar** vive dentro de cada tarjeta:
+  el peer existía, era adoptable, y no había nada que pulsar.
+- **Arreglo**: `pendingBaselines(vault, logs)` en `engine.ts` devuelve los peers
+  con baseline no nulo y ajeno **sólo** cuando `needsBaseline(vault)` es verdadero
+  (bóveda vacía, sin cursores). Ofrecer la acción en cualquier otro caso sería un
+  botón que no hace nada: `readPeer` únicamente adopta un baseline sobre una
+  bóveda vacía. El hook expone `baselinePeers` y la pestaña remota renderiza una
+  tarjeta con el nombre del equipo, el conteo de cuentas y **Cargar**, que
+  reutiliza `handleLoadPeer` (preview incluido) para no duplicar el flujo.
+- **Segundo arreglo, errores visibles**: `refresh()` ahora captura el fallo de
+  cada `store.read` y lo publica como `syncError`; `changes.tsx` muestra un aviso
+  distinguible entre `sync_authentication_failed` y `sync_read_failed`. Antes
+  "no hay cambios" podía significar "todo al día", "carpeta rota" o "la
+  contraseña de este peer no coincide con la mía".
+- **i18n**: `changes.baseline_pending_desc` y `changes.baseline_pending_count` en
+  los cinco idiomas; el badge de la pestaña suma `peerChanges + baselinePeers`.
+- **Verificación**: `npm run typecheck` sin errores; `npm test` 238/238, con tres
+  casos nuevos de `pendingBaselines` y `tests/sync/sync-first-device.test.ts`,
+  que comparte una carpeta falsa entre "PC" y "Android", sella con el crypto
+  real, comprueba que el log publicado no tiene entradas, que el baseline queda
+  listado, que adoptarlo trae las cuentas y los cursores, que ya no se vuelve a
+  ofrecer, y que un log sellado con otra contraseña falla como
+  `sync_authentication_failed` en vez de leerse como vacío. No se verificó en el
+  teléfono: eso es T5.6.
+- **Límite conocido, sin resolver**: si la bóveda del teléfono ya tiene aunque
+  sea una cuenta propia, el baseline de la PC nunca se adopta y las cuentas
+  anteriores a su activación de sync no llegan. Resolverlo exige una fusión
+  (baseline + bóveda local) y una decisión de producto sobre qué gana en caso de
+  colisión, así que se deja fuera de este arreglo a propósito.
+
 ## Próximo paso
 
 Probar el APK en el teléfono (T5.6): crear la bóveda, cerrar y reabrir la app,
 elegir la carpeta SAF observada por Syncthing y cerrar el ciclo Guardar/Cargar
 contra Windows en los dos sentidos. El layout móvil (T5.10) ya está listo para
-esa prueba: la navegación se abre con el botón de menú del header. Después queda
+esa prueba: la navegación se abre con el botón de menú del header, y la pestaña
+remota ahora debe mostrar a la PC con su baseline y el botón **Cargar** (T5.11).
+Ese es el punto exacto a comprobar primero: si la tarjeta aparece, el arreglo
+llegó al dispositivo; si sigue vacía, el problema no era el render. Después queda
 decidir el job de Android en
 CI (T5.8) y T4.4 (Linux real), que sigue al final por decisión del usuario.
 

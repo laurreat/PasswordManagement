@@ -297,6 +297,30 @@ export function needsBaseline(vault: VaultDecrypted): boolean {
 }
 
 /**
+ * Peers whose baseline this device can still adopt.
+ *
+ * Enabling sync stores the accounts that already exist in the baseline, not as
+ * entries, so a peer that only ever enabled sync publishes nothing an entry
+ * list can render. Without this the remote tab stays empty on a fresh device
+ * and the first sync has no button to press, even though `adoptBaseline` would
+ * bring every account over.
+ *
+ * Only peers whose baseline can actually be adopted are returned: offering the
+ * action to a device that already has accounts would be a button that does
+ * nothing.
+ */
+export function pendingBaselines(
+  vault: VaultDecrypted,
+  logs: ChangeLogFile[]
+): ChangeLogFile[] {
+  if (!needsBaseline(vault)) return [];
+
+  return logs
+    .filter((log) => log.baseline !== null && log.deviceId !== vault.deviceId)
+    .sort((first, second) => first.deviceId.localeCompare(second.deviceId));
+}
+
+/**
  * Seeds a brand-new device from a peer's baseline. The cursor starts at the
  * baseline `seq`, so the entries already inside it are never replayed.
  *

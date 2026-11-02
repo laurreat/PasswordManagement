@@ -202,7 +202,12 @@ Consecuencias prácticas:
 Sección **Cambios**, con tres vistas:
 
 1. **Por guardar** — borradores locales. Acción: Guardar.
-2. **Por cargar** — entradas de otros dispositivos. Acción: Cargar.
+2. **Por cargar** — entradas de otros dispositivos. Acción: Cargar. También
+   aparecen aquí los dispositivos que sólo publicaron un `baseline` (es lo que
+   escribe un equipo la primera vez que activa sync), porque sus cuentas no
+   viajan como entradas: con la bóveda vacía se muestra una tarjeta por equipo
+   con el número de cuentas y **Cargar**. Si un archivo de otro dispositivo no
+   se puede abrir, la vista lo dice en vez de quedarse en "todo al día".
 3. **Historial** — cambios de cuenta aplicados, con tipo, hora, origen y
    detalle antes/después.
 

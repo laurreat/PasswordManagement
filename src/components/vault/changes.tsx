@@ -68,6 +68,8 @@ export const ChangesView: React.FC = () => {
     commitSingleDraft,
     commitAllDrafts,
     peerChanges,
+    baselinePeers,
+    syncError,
     previewPeerChanges,
     loadPeerChanges,
     history,
@@ -80,8 +82,7 @@ export const ChangesView: React.FC = () => {
   const [showHidden, setShowHidden] = useState(false);
   const { visible: visibleHistory, hidden: hiddenHistory } = splitHistoryByAge(history);
 
-  const handlePreviewLoad = async (change: PeerPendingChange) => {
-    const deviceId = change.peerDevice.deviceId;
+  const handleLoadPeer = async (deviceId: string) => {
     setPreviewingDevice(deviceId);
 
     try {
@@ -98,6 +99,9 @@ export const ChangesView: React.FC = () => {
       setPreviewingDevice(null);
     }
   };
+
+  const handlePreviewLoad = (change: PeerPendingChange) =>
+    handleLoadPeer(change.peerDevice.deviceId);
 
   const handleSaveDeviceName = async () => {
     if (!editingDeviceName.trim()) return;
@@ -249,6 +253,17 @@ export const ChangesView: React.FC = () => {
               </Button>
             </div>
           )}
+
+          {syncError && folder && (
+            <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <p className="text-xs text-destructive">
+                {syncError === 'sync_authentication_failed'
+                  ? t('app.error_sync_authentication_failed')
+                  : t('app.error_sync_read_failed')}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -265,9 +280,9 @@ export const ChangesView: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="remote" className="flex items-center gap-2">
             {t('changes.tab_remote')}
-            {peerChanges.length > 0 && (
+            {peerChanges.length + baselinePeers.length > 0 && (
               <Badge variant="secondary" className="px-1.5 py-0 text-xs">
-                {peerChanges.length}
+                {peerChanges.length + baselinePeers.length}
               </Badge>
             )}
           </TabsTrigger>
@@ -344,7 +359,7 @@ export const ChangesView: React.FC = () => {
 
         {/* Tab Content: Remote Peer Changes */}
         <TabsContent value="remote" className="mt-4 space-y-3">
-          {peerChanges.length === 0 ? (
+          {peerChanges.length === 0 && baselinePeers.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <CheckCircle2 className="w-10 h-10 text-muted-foreground mb-3 opacity-40" />
@@ -355,7 +370,45 @@ export const ChangesView: React.FC = () => {
               </CardContent>
             </Card>
           ) : (
-            peerChanges.map((change) => {
+            <>
+              {baselinePeers.map((peer) => (
+                <Card key={`baseline-${peer.deviceId}`} className="border-primary/40">
+                  <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Laptop className="w-4 h-4 text-primary" />
+                        <span className="font-semibold text-base">
+                          {peer.deviceName || peer.deviceId.slice(0, 8)}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {peer.baseline?.accounts.length ?? 0} {t('changes.baseline_pending_count')}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground max-w-md">
+                        {t('changes.baseline_pending_desc')}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={() => handleLoadPeer(peer.deviceId)}
+                        disabled={previewingDevice === peer.deviceId}
+                        className="flex items-center gap-1.5"
+                      >
+                        {previewingDevice === peer.deviceId ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                        {t('changes.load')}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {peerChanges.map((change) => {
               const account = change.entry.after ?? change.entry.before;
               return (
                 <Card key={change.entry.changeId} className="border-border hover:border-primary/40 transition-colors">
@@ -400,7 +453,8 @@ export const ChangesView: React.FC = () => {
                   </CardContent>
                 </Card>
               );
-            })
+            })}
+            </>
           )}
         </TabsContent>
 

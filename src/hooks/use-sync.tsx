@@ -10,11 +10,13 @@ import {
   enableSync as enableSyncEngine,
   ensureRelayBaseline,
   needsBaseline,
+  pendingBaselines,
   publishAppliedChange,
   relayAppliedChanges,
   type PublishableChange,
 } from '@/lib/sync/engine';
 import { applyChangeLog, summarizeChangeLog, type ChangeSummary } from '@/lib/sync/apply';
+import { isSyncError } from '@/lib/sync/errors';
 import { createDraft, removeDraft, upsertDraft, type CreateDraftInput } from '@/lib/vault/drafts';
 import {
   appendAccountChange,
@@ -62,6 +64,15 @@ interface SyncContextType {
   commitAllDrafts: () => Promise<void>;
   publishAccountChanges: (changes: PublishableChange[]) => Promise<boolean>;
   peerChanges: PeerPendingChange[];
+  /**
+   * Peers that published a whole vault this device can still adopt. Enabling
+   * sync writes the accounts into the baseline, never as entries, so on a fresh
+   * device these peers have nothing in `peerChanges` and still have to be
+   * loadable.
+   */
+  baselinePeers: ChangeLogFile[];
+  /** Last sync failure, as a `SyncError` code. Null when the folder read fine. */
+  syncError: string | null;
   previewPeerChanges: (deviceId: string) => Promise<PeerLoadPreview | null>;
   loadPeerChanges: (deviceId: string) => Promise<void>;
   history: AccountChangeRecord[];
@@ -79,6 +90,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [peerLogs, setPeerLogs] = useState<ChangeLogFile[]>([]);
   const [ownLog, setOwnLog] = useState<ChangeLogFile | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => {
     const s = createSyncStore();
@@ -98,6 +110,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refresh = useCallback(async () => {
     if (!store || !vault || !masterPassword) return;
     setIsRefreshing(true);
+    setSyncError(null);
     try {
       const activeFolder = await store.folder();
       setFolder(activeFolder);
@@ -109,25 +122,33 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         setOwnLog(await store.read(vault.deviceId, masterPassword));
-      } catch {
+      } catch (error) {
         setOwnLog(null);
+        setSyncError(errorCode(error));
       }
 
       const deviceIds = await store.listDevices();
       const loadedLogs: ChangeLogFile[] = [];
+      let failure: string | null = null;
 
       for (const id of deviceIds) {
         if (id === vault.deviceId) continue;
         try {
           const log = await store.read(id, masterPassword);
           if (log) loadedLogs.push(log);
-        } catch {
-          // Password mismatch or corrupted peer log
+        } catch (error) {
+          // A peer we cannot open is a real answer for the user: either the
+          // master password differs or the file is damaged. Swallowing it made
+          // "nothing pending" indistinguishable from a broken folder.
+          failure = failure ?? errorCode(error);
         }
       }
+
       setPeerLogs(loadedLogs);
-    } catch {
-      // Non-critical background refresh failure
+      if (failure) setSyncError(failure);
+    } catch (error) {
+      setPeerLogs([]);
+      setSyncError(errorCode(error));
     } finally {
       setIsRefreshing(false);
     }
@@ -180,7 +201,12 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return items.sort((a, b) => new Date(b.entry.createdAt).getTime() - new Date(a.entry.createdAt).getTime());
   }, [vault, peerLogs]);
 
-  const totalPendingCount = drafts.length + peerChanges.length;
+  const baselinePeers = useMemo(() => {
+    if (!vault) return [];
+    return pendingBaselines(vault, peerLogs);
+  }, [vault, peerLogs]);
+
+  const totalPendingCount = drafts.length + peerChanges.length + baselinePeers.length;
 
   const chooseFolder = async () => {
     if (!store) return;
@@ -545,6 +571,8 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         commitAllDrafts,
         publishAccountChanges,
         peerChanges,
+        baselinePeers,
+        syncError,
         previewPeerChanges,
         loadPeerChanges,
         history,
@@ -561,3 +589,8 @@ export const useSync = () => {
   if (!context) throw new Error('useSync must be used within a SyncProvider');
   return context;
 };
+
+/** Keeps a failure addressable by the UI instead of turning it into silence. */
+function errorCode(error: unknown): string {
+  return isSyncError(error) ? error.code : 'sync_read_failed';
+}
