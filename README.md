@@ -113,6 +113,10 @@ El resultado queda en `dist/`:
 - `LocalPass-<version>-x64.AppImage` — le das permisos con `chmod +x` y lo
   ejecutás directamente, sin instalación.
 
+El `.deb` es la vía recomendada. El AppImage necesita `libfuse2`, que algunas
+distros recientes (por ejemplo Debian 13/Kali 2026) ya no empaquetan; ahí se
+ejecuta con `./LocalPass-<version>-x64.AppImage --appimage-extract-and-run`.
+
 En ambos casos la bóveda cifrada se guarda en `~/.config/localpass/`
 (`vault.enc.json` y los archivos de sync del dispositivo).
 

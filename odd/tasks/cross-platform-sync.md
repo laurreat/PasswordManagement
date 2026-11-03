@@ -1,6 +1,6 @@
 # LocalPass — Sync multiplataforma y plan de releases
 
-> **Estado**: FASE 4 EN CURSO (T4.4 Linux real y CI bloqueado por facturación) · **Rama**: `feat/cross-platform-sync`
+> **Estado**: FASE 4 VERIFICADA EN KALI (T4.4) · T4.5 bloqueado por facturación · **Rama**: `main`
 > **Base**: `4f1e20c` (feat/security-hardening)
 
 ## Objetivo
@@ -227,7 +227,7 @@ resuelve (`~/.config/localpass`).
       `docs/ROADMAP.md` marcando el empaquetado como configurado y
       `docs/CHANGELOG.md` con la entrada correspondiente. — `f51a4fe`
 
-- [ ] T4.4 **Verificación en Linux real** (en la máquina Linux del usuario):
+- [x] T4.4 **Verificación en Linux real** (en la máquina Linux del usuario):
       `npm ci && npm run build:linux`, instalar el `.deb` y ejecutar el
       AppImage. Criterio: la bóveda se crea en `~/.config/localpass/vault.enc.json`
       con permisos `0600`, se puede crear/editar una cuenta y el ciclo
@@ -239,6 +239,44 @@ resuelve (`~/.config/localpass`).
       pasada, confirmar que `apt install ./LocalPass-<version>-x64.deb` resuelve
       las dependencias en Ubuntu 24.04 (`libgtk-3-0` pasó a `libgtk-3-0t64` con
       la transición t64) y en Debian 12.
+
+      **Verificado el 2026-11-02 en Kali GNU/Linux Rolling 2026.2**
+      (kernel `6.19.14+kali-amd64`, VirtualBox, Node 24.18.1, commit `0adf1d3`):
+
+      - `npm ci` (712 MB) y `npm run build:linux` terminan con `exit 0`; salen
+        `LocalPass-1.1.0-amd64.deb` (98 MB) y `LocalPass-1.1.0-x86_64.AppImage`
+        (121 MB).
+      - `dpkg -i` instala sin errores, registra `/usr/bin/localpass` y el
+        `.desktop`. La app arranca sin `chmod` con un `umask 022` de build.
+      - Bóveda en `~/.config/localpass/vault.enc.json`: modo **600**, dueño
+        `kali`, sobre `{"salt","iv","data"}`. `settings.json` (carpeta de sync)
+        también 600.
+      - Alta de cuenta por UI (`github.com` / `luis@example.com`) y commit con
+        **Guardar todos**: la bóveda pasa de 430 a 1478 B.
+      - **Activar sincronización** escribe
+        `changes-c08a0198-….enc.json` (774 B, modo 600) en la carpeta compartida.
+      - Segunda instancia con `--user-data-dir=/home/kali/.config/localpass2`:
+        ve el peer con **1 cuentas base** y botón **Cargar** — el fix de
+        `07fa4a6` (T5.11) funciona en Linux —; al cargar, la bóveda pasa de 430
+        a 906 B y la cuenta aparece en Cuentas.
+      - Camino incremental: en la instancia 1 se crea `gitlab.com` y **Guardar**
+        lleva el log de 774 a 1550 B; en la instancia 2 **Actualizar cambios**
+        muestra "Creación · gitlab.com · desde Linux" con **Cargar**, y tras
+        cargar quedan 2 cuentas con la bóveda en 1986 B.
+      - Observaciones de entorno, no del producto: `libfuse2` no existe en Kali
+        (el AppImage requiere `--appimage-extract-and-run`); los errores de
+        DBus/dconf bajo Xvfb son cosméticos; el diálogo GTK de carpeta devuelve
+        vacío si se escribe la ruta en la barra de ubicación y se pulsa Enter
+        (hay que seleccionar la fila de la carpeta y pulsar **Open**).
+
+      Pendiente fuera de Kali: Ubuntu 24.04 (AppArmor/userns y deps `t64`),
+      Debian 12 y Fedora (ver T4.6).
+
+- [ ] T4.6 **Matriz de distros pendiente**: repetir T4.4 en Ubuntu 24.04
+      (`libgtk-3-0t64`), Debian 12 y Fedora. Criterio: `.deb`/`.rpm` instala,
+      la app abre y la bóveda se crea con `0600`. Ubuntu 24.04 es el caso de
+      riesgo por AppArmor/userns; si el AppImage falla ahí, documentar el
+      workaround en `README.md`.
 
 - [ ] T4.5 **Bloqueo externo registrado**: GitHub Actions rechaza los runs con
       *"The job was not started because your account is locked due to a billing
@@ -490,8 +528,8 @@ pedir permiso de almacenamiento amplio.
   build`, `next build` con Node v22.23.4, `next build` con `CI=true` y
   electron-builder con caché vacío (descarga NSIS y genera los dos
   instaladores). Ninguna de esas era la causa.
-- **No verificado**: artefactos `.AppImage`/`.deb`, instalación y ejecución en
-  Linux. Queda T4.4 en la máquina Linux del usuario.
+- **Verificado después**: artefactos `.AppImage`/`.deb`, instalación y ejecución
+  en Linux (Kali 2026.2), incluido el ciclo Guardar/Cargar — ver T4.4.
 
 ### Fase 5
 
@@ -695,8 +733,9 @@ esa prueba: la navegación se abre con el botón de menú del header, y la pesta
 remota ahora debe mostrar a la PC con su baseline y el botón **Cargar** (T5.11).
 Ese es el punto exacto a comprobar primero: si la tarjeta aparece, el arreglo
 llegó al dispositivo; si sigue vacía, el problema no era el render. Después queda
-decidir el job de Android en
-CI (T5.8) y T4.4 (Linux real), que sigue al final por decisión del usuario.
+decisiones: el job de Android en
+CI (T5.8), la matriz de distros Linux (T4.6) y la prueba en el teléfono real
+(T5.6).
 
 ---
-**Actualizado**: 2026-11-01
+**Actualizado**: 2026-11-02
