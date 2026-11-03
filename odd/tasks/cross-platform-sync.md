@@ -268,6 +268,17 @@ resuelve (`~/.config/localpass`).
         DBus/dconf bajo Xvfb son cosméticos; el diálogo GTK de carpeta devuelve
         vacío si se escribe la ruta en la barra de ubicación y se pulsa Enter
         (hay que seleccionar la fila de la carpeta y pulsar **Open**).
+      - **Hallazgo de empaquetado**: `localpass` y `chrome-sandbox` quedan en
+        `0777` dentro del `.deb` y en `dist/linux-unpacked`. No es nuestra
+        configuración: el zip oficial de Electron 45.1.0 ya trae esas dos
+        entradas con `0777` (`zipinfo -l` sobre
+        `~/.cache/electron/…/electron-v45.1.0-linux-x64.zip`) y electron-builder
+        conserva el modo. La app arranca igual porque `chrome-sandbox` sin
+        setuid usa el sandbox de *user namespaces*, habilitado en Kali
+        (`kernel.unprivileged_userns_clone=1`). En Ubuntu 24.04, con userns
+        restringido por AppArmor, lo esperable es que falle al iniciar; esto
+        convierte a T4.6 en la prueba decisiva y sugiere normalizar modos en un
+        `afterPack` (`0755` para el ejecutable, `4755` para `chrome-sandbox`).
 
       Pendiente fuera de Kali: Ubuntu 24.04 (AppArmor/userns y deps `t64`),
       Debian 12 y Fedora (ver T4.6).
